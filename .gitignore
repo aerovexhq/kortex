@@ -1,0 +1,18 @@
+# Rust build artifacts
+target/
+**/*.rs.bk
+
+# GGUF Model weights and Large Binaries
+models/
+*.gguf
+*.bin
+*.pt
+*.safetensors
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~
