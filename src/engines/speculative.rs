@@ -12,7 +12,7 @@ use std::ptr;
 use llama_cpp_sys_2::{
     ggml_backend_dev_get, ggml_backend_dev_t, llama_batch, llama_batch_free, llama_batch_init,
     llama_context, llama_context_default_params, llama_decode, llama_free, llama_get_logits_ith,
-    llama_get_memory, llama_init_from_model, llama_memory_seq_rm,
+    llama_get_memory, llama_init_from_model, llama_memory_clear, llama_memory_seq_rm,
     llama_model, llama_model_default_params, llama_model_free, llama_model_get_vocab,
     llama_model_load_from_file, llama_model_size, llama_token, llama_token_to_piece,
     llama_tokenize, llama_vocab, llama_vocab_is_eog, llama_vocab_n_tokens,
@@ -233,10 +233,22 @@ impl ModelEngine for SpeculativeEngine {
         let mut profiler = TokenSpeedCalculator::new();
         profiler.start();
 
-        let formatted = format!(
-            "<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n",
-            prompt
-        );
+        // 0. Reset KV caches for both draft and target before evaluating new prompt
+        unsafe {
+            let mem_dft = llama_get_memory(self.ctx_draft);
+            llama_memory_clear(mem_dft, true);
+            let mem_tgt = llama_get_memory(self.ctx_target);
+            llama_memory_clear(mem_tgt, true);
+        }
+
+        let formatted = if prompt.starts_with("<|im_start|>") || prompt.starts_with("<|start_header_id|>") {
+            prompt.to_string()
+        } else {
+            format!(
+                "<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n",
+                prompt
+            )
+        };
         let c_text = CString::new(formatted)?;
 
         let max_alloc = c_text.to_bytes().len() + 512;

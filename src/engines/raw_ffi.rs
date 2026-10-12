@@ -4,7 +4,8 @@ use anyhow::{bail, Context, Result};
 use llama_cpp_sys_2::{
     ggml_backend_dev_get, ggml_backend_dev_t, llama_batch, llama_batch_free, llama_batch_init,
     llama_context, llama_context_default_params, llama_decode, llama_free, llama_get_logits_ith,
-    llama_init_from_model, llama_model, llama_model_default_params, llama_model_free,
+    llama_get_memory, llama_init_from_model, llama_memory_clear, llama_model,
+    llama_model_default_params, llama_model_free,
     llama_model_get_vocab, llama_model_load_from_file, llama_model_n_embd, llama_model_n_head,
     llama_model_n_head_kv, llama_model_n_layer, llama_model_n_params, llama_model_size,
     llama_token, llama_token_to_piece, llama_tokenize, llama_vocab, llama_vocab_is_eog,
@@ -198,10 +199,20 @@ impl ModelEngine for RawFfiEngine {
         let mut profiler = TokenSpeedCalculator::new();
         profiler.start();
 
-        let formatted = format!(
-            "<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n",
-            prompt
-        );
+        // 0. Reset KV cache before evaluating new prompt
+        unsafe {
+            let mem = llama_get_memory(self.ctx);
+            llama_memory_clear(mem, true);
+        }
+
+        let formatted = if prompt.starts_with("<|im_start|>") || prompt.starts_with("<|start_header_id|>") {
+            prompt.to_string()
+        } else {
+            format!(
+                "<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n",
+                prompt
+            )
+        };
         let c_text = CString::new(formatted)?;
 
         let max_alloc = (c_text.to_bytes().len() + 512).max((self.config.ctx_size as usize) + 512);
