@@ -51,7 +51,7 @@ Kortex implements and benchmarks 17 distinct compression and approximation algor
 
 ### 3. Cryptographic SHA-256 Model Profile Auto-Tuning
 Kortex computes a fast cryptographic SHA-256 fingerprint over GGUF metadata headers and tensor configurations in `< 15 ms`.
-* **Persistent Cache Database:** Indexes models in `analysis/model_profile_cache.json`.
+* **Persistent Cache Database:** Indexes models in `~/.kortex/model_profile_cache.json`.
 * **Zero-Calibrate Boot:** Instantly matches any downloaded or moved model file to its empirically proven champion runner configuration (precision, sink count, window size, chunk stride) without re-running expensive tuning passes.
 
 ### 4. Native Ollama-Style Interactive Terminal REPL
@@ -94,7 +94,7 @@ Tested on an **NVIDIA GeForce RTX 3050 Ti Laptop GPU (4GB VRAM)** + 16GB Host DD
 ### Installation
 ```bash
 # Clone the repository
-git clone git@github.com:larvance/kortex.git
+git clone git@github.com:aerovexhq/kortex.git
 cd kortex
 
 # Build release binaries
@@ -126,15 +126,11 @@ cargo run --release --bin autotune -- -m path/to/model.gguf
 ```
 kortex/
 ├── Cargo.toml                  # Package manifest & Vulkan dependencies
-├── analysis/
-│   ├── analysis.md             # Formal mathematical derivations & research logs
-│   ├── model_profile_cache.json# Persistent cryptographic SHA-256 profile database
-│   └── master_compression_matrix.json # 85-cell empirical benchmark data
 ├── src/
 │   ├── lib.rs                  # Public crate exports
 │   ├── engine.rs               # ModelEngine trait & memory profiling
 │   ├── benchmark.rs            # Sub-50ns latency & throughput profiler
-│   ├── model_cache.rs          # SHA-256 header hashing & cache lookup
+│   ├── model_cache.rs          # SHA-256 header hashing & cache lookup (~/.kortex/)
 │   ├── autotune.rs             # Multi-dimensional efficiency optimizer
 │   ├── engines/                # Inference execution backends
 │   │   ├── raw_ffi.rs          # Direct C-ABI FFI Vulkan engine

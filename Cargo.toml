@@ -1,0 +1,18 @@
+[package]
+name = "kortex"
+version = "0.1.0"
+edition = "2021"
+description = "Hardware-accelerated edge LLM inference kernel, bounded O(1) attention streaming, and mathematical KV-cache compression in Rust."
+license = "MIT"
+repository = "https://github.com/aerovexhq/kortex"
+
+[dependencies]
+llama-cpp-2 = { version = "0.1.159", features = ["vulkan"] }
+llama-cpp-sys-2 = { version = "0.1.159", features = ["vulkan"] }
+anyhow = "1.0"
+clap = { version = "4.6.7", features = ["derive"] }
+encoding_rs = "0.8.42"
+hf-hub = "1.0.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sha2 = "0.11.0"
