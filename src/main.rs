@@ -1,8 +1,6 @@
-use std::path::Path;
 use anyhow::Result;
 
-use kortex::chat::{list_available_models, run_chat_repl, BANNER};
-use kortex::model_cache::ModelCache;
+use kortex::chat::{list_available_models, print_cache_table, run_chat_repl, BANNER};
 
 fn print_cli_help() {
     print!("{}", BANNER);
@@ -22,18 +20,7 @@ fn print_cli_help() {
 }
 
 fn print_cache_status() {
-    let cache = ModelCache::load();
-    println!("\n╔═══════════════════════════════════════════════════════════════════════════╗");
-    println!("║                     OPTIMIZER CACHE HASH DATABASE                         ║");
-    println!("╠═══════════════════════════════════════════════════════════════════════════╣");
-    for (h, entry) in cache.all_entries() {
-        println!("║ Hash:   \x1b[1;33m{:<65}\x1b[0m ║", &h[..32]);
-        println!("║ File:   {:<65} ║", Path::new(&entry.model_path).file_name().unwrap_or_default().to_string_lossy());
-        println!("║ Runner: {:<65} ║", entry.optimal_runner.runner_type.label());
-        println!("║ Score:  {:<65.1} ║", entry.optimal_runner.efficiency_score);
-        println!("╟───────────────────────────────────────────────────────────────────────────╢");
-    }
-    println!("╚═══════════════════════════════════════════════════════════════════════════╝\n");
+    print_cache_table();
 }
 
 fn print_models_list() {

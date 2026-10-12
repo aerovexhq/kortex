@@ -10,11 +10,16 @@ use crate::engines::hybrid_sink::HybridSinkEngine;
 use crate::model_cache::ModelCache;
 
 pub const BANNER: &str = r#"
- ╔═══════════════════════════════════════════════════════════════════════════╗
- ║                     KORTEX INTERACTIVE CHAT REPL                          ║
- ║          High-Throughput Edge Inference Engine with Hash Optimization     ║
- ╚═══════════════════════════════════════════════════════════════════════════╝
+╔═════════════════════════════════════════════════════════════════════════════╗
+║                        KORTEX INTERACTIVE CHAT REPL                         ║
+║        High-Throughput Edge Inference Engine with Hash Optimization         ║
+╚═════════════════════════════════════════════════════════════════════════════╝
 "#;
+
+fn print_meta_row(label: &str, value: &str, color: &str) {
+    let val_padded = format!("{:<63}", value);
+    println!("│ {:<11} {}{}\x1b[0m │", label, color, val_padded);
+}
 
 pub struct ChatSession {
     pub engine: HybridSinkEngine,
@@ -35,13 +40,20 @@ impl ChatSession {
 
         let runner_prof = &cache_entry.optimal_runner;
 
+        let kv_config_str = format!(
+            "Precision: {} | Sinks: {} | Window: {} | Chunk: {}",
+            runner_prof.kv_precision,
+            runner_prof.sink_tokens,
+            runner_prof.window_size,
+            runner_prof.evict_chunk
+        );
+
         println!("╭─────────────────────────────────────────────────────────────────────────────╮");
-        println!("│ Model:      \x1b[1;36m{:<62}\x1b[0m│", file_name);
-        println!("│ Hash:       \x1b[1;33m{:<62}\x1b[0m│", &hash[..32]);
-        println!("│ Runner:     \x1b[1;32m{:<62}\x1b[0m│", runner_prof.runner_type.label());
-        println!("│ KV Config:  \x1b[1;35mPrecision: {}, Sinks: {}, Window: {}, Chunk: {:<17}\x1b[0m│", 
-            runner_prof.kv_precision, runner_prof.sink_tokens, runner_prof.window_size, runner_prof.evict_chunk);
-        println!("│ Status:     \x1b[1;32m[Cached Champion Runner Profile Loaded from Hash Database]     \x1b[0m│");
+        print_meta_row("Model:", &file_name, "\x1b[1;36m");
+        print_meta_row("Hash:", &hash[..32], "\x1b[1;33m");
+        print_meta_row("Runner:", runner_prof.runner_type.label(), "\x1b[1;32m");
+        print_meta_row("KV Config:", &kv_config_str, "\x1b[1;35m");
+        print_meta_row("Status:", "[Cached Champion Runner Profile Loaded from Hash Database]", "\x1b[1;32m");
         println!("╰─────────────────────────────────────────────────────────────────────────────╯");
 
         let precision = match runner_prof.kv_precision.as_str() {
@@ -100,20 +112,20 @@ impl ChatSession {
 
     pub fn print_info(&self) {
         let mem = self.engine.memory_profile();
-        println!("\n╔═══════════════════════════════════════════════════════════════════════════╗");
-        println!("║                             LIVE MODEL SYSTEM INFO                        ║");
-        println!("╠══════════════════════════╦════════════════════════════════════════════════╣");
-        println!("║ Model Name               ║ {:<46} ║", self.model_name);
-        println!("║ SHA-256 Hash             ║ {:<46} ║", &self.model_hash[..32]);
-        println!("║ Parameters               ║ {:>42.2} B ║", mem.total_params as f64 / 1e9);
-        println!("║ Base Weights VRAM        ║ {:>40.2} MiB ║", mem.weights_mib());
-        println!("║ Transformer Depth        ║ {:>40} layers ║", mem.n_layers);
-        println!("║ Attention Heads (Q / KV) ║ {:>35} Q / {:>2} KV ║", mem.n_heads, mem.n_kv_heads);
-        println!("║ Head Dimension           ║ {:>42} ║", mem.head_dim);
-        println!("║ Active KV Footprint      ║ {:>38.2} KiB/tok ║", mem.kv_kib_per_token());
-        println!("║ Bounded Working Set      ║ {:>40.2} MiB ║", mem.total_memory_mib());
-        println!("║ Active Device            ║ {:<46} ║", self.engine.device_name());
-        println!("╚══════════════════════════╩════════════════════════════════════════════════╝\n");
+        println!("\n╔═════════════════════════════════════════════════════════════════════════════╗");
+        println!("║                        LIVE MODEL SYSTEM INFORMATION                        ║");
+        println!("╠══════════════════════════╦══════════════════════════════════════════════════╣");
+        println!("║ Model Name               ║ {:<48} ║", self.model_name);
+        println!("║ SHA-256 Hash             ║ {:<48} ║", &self.model_hash[..32]);
+        println!("║ Parameters               ║ {:<48} ║", format!("{:.2} B", mem.total_params as f64 / 1e9));
+        println!("║ Base Weights VRAM        ║ {:<48} ║", format!("{:.2} MiB", mem.weights_mib()));
+        println!("║ Transformer Depth        ║ {:<48} ║", format!("{} layers", mem.n_layers));
+        println!("║ Attention Heads (Q / KV) ║ {:<48} ║", format!("{} Q / {} KV", mem.n_heads, mem.n_kv_heads));
+        println!("║ Head Dimension           ║ {:<48} ║", format!("{}", mem.head_dim));
+        println!("║ Active KV Footprint      ║ {:<48} ║", format!("{:.2} KiB/tok", mem.kv_kib_per_token()));
+        println!("║ Bounded Working Set      ║ {:<48} ║", format!("{:.2} MiB", mem.total_memory_mib()));
+        println!("║ Active Device            ║ {:<48} ║", self.engine.device_name());
+        println!("╚══════════════════════════╩══════════════════════════════════════════════════╝\n");
     }
 
     pub fn step(&mut self, user_input: &str) -> Result<()> {
@@ -194,6 +206,26 @@ pub fn list_available_models() -> Vec<PathBuf> {
     }
     models.sort();
     models
+}
+
+pub fn print_cache_table() {
+    let cache = ModelCache::load();
+    println!("\n╔═════════════════════════════════════════════════════════════════════════════╗");
+    println!("║                        OPTIMIZER CACHE HASH DATABASE                        ║");
+    println!("╠═════════════════════════════════════════════════════════════════════════════╣");
+    for (h, entry) in cache.all_entries() {
+        let hash_str = format!("{:<66}", &h[..32]);
+        let file_name = Path::new(&entry.model_path).file_name().unwrap_or_default().to_string_lossy();
+        let file_str = format!("{:<66}", file_name);
+        let runner_str = format!("{:<66}", entry.optimal_runner.runner_type.label());
+        let score_str = format!("{:<66.1}", entry.optimal_runner.efficiency_score);
+        println!("║ Hash:    \x1b[1;33m{}\x1b[0m ║", hash_str);
+        println!("║ File:    {} ║", file_str);
+        println!("║ Runner:  {} ║", runner_str);
+        println!("║ Score:   {} ║", score_str);
+        println!("╟─────────────────────────────────────────────────────────────────────────────╢");
+    }
+    println!("╚═════════════════════════════════════════════════════════════════════════════╝\n");
 }
 
 pub fn print_help() {
@@ -305,18 +337,7 @@ pub fn run_chat_repl(model_arg: Option<&str>) -> Result<()> {
                 println!("Conversation context cleared! ({} previous turns erased)\n", turns);
             }
             "/cache" => {
-                let cache = ModelCache::load();
-                println!("\n╔═══════════════════════════════════════════════════════════════════════════╗");
-                println!("║                     OPTIMIZER CACHE HASH DATABASE                         ║");
-                println!("╠═══════════════════════════════════════════════════════════════════════════╣");
-                for (h, entry) in cache.all_entries() {
-                    println!("║ Hash:   \x1b[1;33m{:<65}\x1b[0m ║", &h[..32]);
-                    println!("║ File:   {:<65} ║", Path::new(&entry.model_path).file_name().unwrap_or_default().to_string_lossy());
-                    println!("║ Runner: {:<65} ║", entry.optimal_runner.runner_type.label());
-                    println!("║ Score:  {:<65.1} ║", entry.optimal_runner.efficiency_score);
-                    println!("╟───────────────────────────────────────────────────────────────────────────╢");
-                }
-                println!("╚═══════════════════════════════════════════════════════════════════════════╝\n");
+                print_cache_table();
             }
             "/models" => {
                 let models = list_available_models();
