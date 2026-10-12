@@ -46,12 +46,12 @@ impl OpdmRopeEvaluator {
         }
 
         // Generate orthogonal Walsh-Fourier spreading matrices for P channels
-        let mut spreading_codes = vec![vec![1.0f32; self.head_dim]; p];
+        let mut spreading_codes = vec![1.0f32; p * self.head_dim];
         for k in 0..p {
             for d in 0..self.head_dim {
                 // Orthogonal Walsh function derived from binary inner product of index bits
                 let parity = (k & (d / (self.head_dim / p).max(1))).count_ones() % 2;
-                spreading_codes[k][d] = if parity == 1 { -1.0 } else { 1.0 };
+                spreading_codes[k * self.head_dim + d] = if parity == 1 { -1.0 } else { 1.0 };
             }
         }
 
@@ -64,7 +64,7 @@ impl OpdmRopeEvaluator {
             for k in 0..p {
                 let t = start_t + k;
                 for d in 0..self.head_dim {
-                    composite_channel[d] += spreading_codes[k][d] * original[t * self.head_dim + d];
+                    composite_channel[d] += spreading_codes[k * self.head_dim + d] * original[t * self.head_dim + d];
                 }
             }
 
@@ -76,7 +76,7 @@ impl OpdmRopeEvaluator {
             for k in 0..p {
                 let t = start_t + k;
                 for d in 0..self.head_dim {
-                    let recovered = composite_channel[d] * spreading_codes[k][d] * (p as f32).sqrt();
+                    let recovered = composite_channel[d] * spreading_codes[k * self.head_dim + d] * (p as f32).sqrt();
                     // Inter-channel orthogonal cancellation
                     reconstructed[t * self.head_dim + d] = recovered;
                 }

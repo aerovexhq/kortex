@@ -58,12 +58,12 @@ impl OrthogonalHolographyEvaluator {
 
         // Generate Hadamard orthogonal binary codes w_l in {-1, +1}^d
         // Using Sylvester's construction for Hadamard matrix
-        let mut hadamard_codes = vec![vec![1.0f32; self.head_dim]; self.n_layers];
+        let mut hadamard_codes = vec![1.0f32; self.n_layers * self.head_dim];
         for l in 0..self.n_layers {
             for d in 0..self.head_dim {
                 // Bitwise parity of l and d creates orthogonal Walsh functions
                 let parity = (l & d).count_ones() % 2;
-                hadamard_codes[l][d] = if parity == 1 { -1.0 } else { 1.0 };
+                hadamard_codes[l * self.head_dim + d] = if parity == 1 { -1.0 } else { 1.0 };
             }
         }
 
@@ -74,7 +74,7 @@ impl OrthogonalHolographyEvaluator {
                 let mut sum = 0.0f32;
                 for l in 0..self.n_layers {
                     let orig_val = original[(l * self.sequence_length + t) * self.head_dim + d];
-                    sum += hadamard_codes[l][d] * orig_val;
+                    sum += hadamard_codes[l * self.head_dim + d] * orig_val;
                 }
                 shared_substrate[t * self.head_dim + d] = sum / (self.n_layers as f32).sqrt();
             }
@@ -85,7 +85,7 @@ impl OrthogonalHolographyEvaluator {
             for t in 0..self.sequence_length {
                 for d in 0..self.head_dim {
                     let sub_val = shared_substrate[t * self.head_dim + d];
-                    let rec_val = (hadamard_codes[l][d] * sub_val) * (self.n_layers as f32).sqrt();
+                    let rec_val = (hadamard_codes[l * self.head_dim + d] * sub_val) * (self.n_layers as f32).sqrt();
                     reconstructed[(l * self.sequence_length + t) * self.head_dim + d] = rec_val;
                 }
             }

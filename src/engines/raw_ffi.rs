@@ -3,17 +3,19 @@ use std::ptr;
 use anyhow::{bail, Context, Result};
 use llama_cpp_sys_2::{
     ggml_backend_dev_get, ggml_backend_dev_t, llama_batch, llama_batch_free, llama_batch_init,
-    llama_context, llama_context_default_params, llama_decode, llama_free, llama_get_logits_ith,
-    llama_get_memory, llama_init_from_model, llama_memory_clear, llama_model,
+    llama_context, llama_context_default_params, llama_decode, llama_free, llama_get_memory, llama_init_from_model, llama_memory_clear, llama_model,
     llama_model_default_params, llama_model_free,
     llama_model_get_vocab, llama_model_load_from_file, llama_model_n_embd, llama_model_n_head,
     llama_model_n_head_kv, llama_model_n_layer, llama_model_n_params, llama_model_size,
     llama_token, llama_token_to_piece, llama_tokenize, llama_vocab, llama_vocab_is_eog,
-    llama_vocab_n_tokens,
 };
 
 use crate::benchmark::TokenSpeedCalculator;
-use crate::engine::{EngineConfig, GenerationOutput, GenerationParams, ModelEngine, ModelMemoryProfile};
+use crate::sampling::SamplerChain;
+use crate::engine::{
+    EngineConfig, GenerationOutput, GenerationParams, ModelEngine, ModelMemoryProfile,
+    Utf8StreamDecoder,
+};
 
 /// Low-Level Engine bypassing all safe wrapper layers.
 /// Directly manages C pointers, manual batch allocations, raw logits memory,
@@ -25,6 +27,8 @@ pub struct RawFfiEngine {
     batch: llama_batch,
     config: EngineConfig,
     device_label: String,
+    /// Reusable tokenization buffer (avoids a per-call heap allocation).
+    token_scratch: Vec<llama_token>,
     #[allow(dead_code)]
     devices_buf: Box<[ggml_backend_dev_t; 16]>,
 }
@@ -95,6 +99,7 @@ impl RawFfiEngine {
                 batch,
                 config,
                 device_label,
+                token_scratch: Vec::with_capacity(1024),
                 devices_buf,
             })
         }
@@ -118,30 +123,6 @@ impl RawFfiEngine {
     #[inline]
     unsafe fn clear_batch(&mut self) {
         self.batch.n_tokens = 0;
-    }
-
-    /// Low-level greedy argmax: reads raw `*mut f32` logit array directly from the
-    /// C context memory and returns the highest scoring token index.
-    unsafe fn sample_greedy_argmax(&self) -> llama_token {
-        let n_vocab = llama_vocab_n_tokens(self.vocab);
-        let logits_ptr = llama_get_logits_ith(self.ctx, -1);
-        if logits_ptr.is_null() {
-            return 0;
-        }
-
-        let logits = std::slice::from_raw_parts(logits_ptr, n_vocab as usize);
-
-        let mut max_idx = 0;
-        let mut max_val = f32::NEG_INFINITY;
-
-        for (i, &val) in logits.iter().enumerate() {
-            if val > max_val {
-                max_val = val;
-                max_idx = i;
-            }
-        }
-
-        max_idx as llama_token
     }
 }
 
@@ -213,15 +194,20 @@ impl ModelEngine for RawFfiEngine {
                 prompt
             )
         };
-        let c_text = CString::new(formatted)?;
-
-        let max_alloc = (c_text.to_bytes().len() + 512).max((self.config.ctx_size as usize) + 512);
-        let mut tokens = vec![0 as llama_token; max_alloc];
+        // Tokenize straight from the UTF-8 bytes (explicit length, no NUL needed) into the
+        // reusable scratch buffer.
+        let text_bytes = formatted.as_bytes();
+        let mut tokens = std::mem::take(&mut self.token_scratch);
+        tokens.clear();
+        tokens.resize(
+            (text_bytes.len() + 512).max((self.config.ctx_size as usize) + 512),
+            0 as llama_token,
+        );
         let n_tokens = unsafe {
             llama_tokenize(
                 self.vocab,
-                c_text.as_ptr(),
-                c_text.to_bytes().len() as i32,
+                text_bytes.as_ptr().cast::<c_char>(),
+                text_bytes.len() as i32,
                 tokens.as_mut_ptr(),
                 tokens.len() as i32,
                 true,
@@ -254,16 +240,21 @@ impl ModelEngine for RawFfiEngine {
             }
         }
         profiler.finish_prompt(tokens.len());
+        // Hand the buffer back for the next call.
+        let n_prompt = tokens.len() as i32;
+        self.token_scratch = tokens;
 
         // 2. Autoregressive loop
-        let mut n_cur = tokens.len() as i32;
+        let mut n_cur = n_prompt;
         let max_target = n_cur + params.max_tokens as i32;
         let mut output_text = String::new();
         let mut generated_count = 0;
         let mut piece_buf = [0 as c_char; 256];
+        let mut utf8 = Utf8StreamDecoder::new();
+        let mut sampler = SamplerChain::from_params(params);
 
         while n_cur < max_target {
-            let token = unsafe { self.sample_greedy_argmax() };
+            let token = unsafe { sampler.sample(self.ctx, -1) };
 
             if unsafe { llama_vocab_is_eog(self.vocab, token) } {
                 break;
@@ -288,10 +279,10 @@ impl ModelEngine for RawFfiEngine {
                 let u8_slice = unsafe {
                     std::slice::from_raw_parts(piece_buf.as_ptr().cast::<u8>(), bytes_written as usize)
                 };
-                if let Ok(piece) = std::str::from_utf8(u8_slice) {
-                    output_text.push_str(piece);
+                if let Some(piece) = utf8.feed(u8_slice) {
+                    output_text.push_str(&piece);
                     if let Some(cb) = on_token.as_mut() {
-                        let cont = cb(piece);
+                        let cont = cb(&piece);
                         if !cont {
                             break;
                         }
@@ -310,6 +301,13 @@ impl ModelEngine for RawFfiEngine {
             }
 
             n_cur += 1;
+        }
+
+        if let Some(rest) = utf8.flush() {
+            output_text.push_str(&rest);
+            if let Some(cb) = on_token.as_mut() {
+                let _ = cb(&rest);
+            }
         }
 
         let report = profiler.stop();

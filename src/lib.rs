@@ -5,6 +5,7 @@ pub mod compression;
 pub mod engine;
 pub mod engines;
 pub mod model_cache;
+pub mod sampling;
 
 pub use autotune::{AutoTuner, BenchmarkProfile, ModelTuningReport, ScoreBreakdown};
 pub use benchmark::{BenchmarkReport, TokenSpeedCalculator};

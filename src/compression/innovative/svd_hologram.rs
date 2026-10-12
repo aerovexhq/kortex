@@ -45,17 +45,17 @@ impl SvdHologramEvaluator {
         // Generate synthetic low-rank semantic signal + sparse transient noise
         // Authentic NLP activations have 85% of variance concentrated in top 12-24 singular values
         let n_true_topics = self.max_rank;
-        let mut topic_vectors = vec![vec![0.0f32; self.head_dim]; n_true_topics];
+        let mut topic_vectors = vec![0.0f32; n_true_topics * self.head_dim];
         for k in 0..n_true_topics {
             for d in 0..self.head_dim {
-                topic_vectors[k][d] = ((k * 13 + d * 7) as f32).sin();
+                topic_vectors[k * self.head_dim + d] = ((k * 13 + d * 7) as f32).sin();
             }
         }
 
-        let mut topic_weights = vec![vec![0.0f32; n_true_topics]; self.sequence_length];
+        let mut topic_weights = vec![0.0f32; self.sequence_length * n_true_topics];
         for t in 0..self.sequence_length {
             for k in 0..n_true_topics {
-                topic_weights[t][k] = ((t as f32) * 0.05 * (k as f32 + 1.0)).cos();
+                topic_weights[t * n_true_topics + k] = ((t as f32) * 0.05 * (k as f32 + 1.0)).cos();
             }
         }
 
@@ -64,7 +64,7 @@ impl SvdHologramEvaluator {
             for d in 0..self.head_dim {
                 let mut val = 0.0f32;
                 for k in 0..n_true_topics {
-                    val += topic_weights[t][k] * topic_vectors[k][d];
+                    val += topic_weights[t * n_true_topics + k] * topic_vectors[k * self.head_dim + d];
                 }
                 let noise = 0.05 * ((t + d) as f32).sin();
                 original[t * self.head_dim + d] = val + noise;

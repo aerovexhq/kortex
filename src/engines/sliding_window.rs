@@ -11,16 +11,16 @@ use std::ffi::{c_char, CString};
 use std::ptr;
 use llama_cpp_sys_2::{
     ggml_backend_dev_get, ggml_backend_dev_t, llama_batch, llama_batch_free, llama_batch_init,
-    llama_context, llama_context_default_params, llama_decode, llama_free, llama_get_logits_ith,
+    llama_context, llama_context_default_params, llama_decode, llama_free,
     llama_get_memory, llama_init_from_model, llama_memory_clear, llama_memory_seq_add,
     llama_memory_seq_rm, llama_model, llama_model_default_params, llama_model_free, llama_model_get_vocab,
     llama_model_load_from_file, llama_model_n_embd, llama_model_n_head,
     llama_model_n_head_kv, llama_model_n_layer, llama_model_n_params, llama_model_size,
     llama_token, llama_token_to_piece, llama_tokenize, llama_vocab, llama_vocab_is_eog,
-    llama_vocab_n_tokens,
 };
 
 use crate::benchmark::TokenSpeedCalculator;
+use crate::sampling::SamplerChain;
 use crate::engine::{
     global_backend, EngineConfig, GenerationOutput, GenerationParams, ModelEngine,
     ModelMemoryProfile, Utf8StreamDecoder,
@@ -38,6 +38,8 @@ pub struct SlidingWindowEngine {
     window_size: i32,
     evict_chunk: i32,
     pub n_past: i32,
+    /// Reusable tokenization buffer (avoids a per-call heap allocation).
+    token_scratch: Vec<llama_token>,
     #[allow(dead_code)]
     devices_buf: Box<[ggml_backend_dev_t; 16]>,
 }
@@ -123,6 +125,7 @@ impl SlidingWindowEngine {
                 window_size,
                 evict_chunk,
                 n_past: 0,
+                token_scratch: Vec::with_capacity(1024),
                 devices_buf,
             })
         }
@@ -142,27 +145,6 @@ impl SlidingWindowEngine {
     #[inline]
     unsafe fn clear_batch(&mut self) {
         self.batch.n_tokens = 0;
-    }
-
-    unsafe fn sample_greedy_argmax(&self) -> llama_token {
-        let n_vocab = llama_vocab_n_tokens(self.vocab);
-        let logits_ptr = llama_get_logits_ith(self.ctx, -1);
-        if logits_ptr.is_null() {
-            return 0;
-        }
-
-        let logits = std::slice::from_raw_parts(logits_ptr, n_vocab as usize);
-        let mut max_idx = 0;
-        let mut max_val = f32::NEG_INFINITY;
-
-        for (i, &val) in logits.iter().enumerate() {
-            if val > max_val {
-                max_val = val;
-                max_idx = i;
-            }
-        }
-
-        max_idx as llama_token
     }
 
     pub fn config(&self) -> &EngineConfig {
@@ -240,15 +222,17 @@ impl SlidingWindowEngine {
                 prompt
             )
         };
-        let c_text = CString::new(formatted)?;
-
-        let max_alloc = c_text.to_bytes().len() + 512;
-        let mut tokens = vec![0 as llama_token; max_alloc];
+        // Tokenize straight from the UTF-8 bytes (explicit length, no NUL needed) into the
+        // reusable scratch buffer.
+        let text_bytes = formatted.as_bytes();
+        let mut tokens = std::mem::take(&mut self.token_scratch);
+        tokens.clear();
+        tokens.resize(text_bytes.len() + 512, 0 as llama_token);
         let n_tokens = unsafe {
             llama_tokenize(
                 self.vocab,
-                c_text.as_ptr(),
-                c_text.to_bytes().len() as i32,
+                text_bytes.as_ptr().cast::<c_char>(),
+                text_bytes.len() as i32,
                 tokens.as_mut_ptr(),
                 tokens.len() as i32,
                 // BOS/special insertion only belongs at the start of a sequence.
@@ -317,17 +301,20 @@ impl SlidingWindowEngine {
         }
         self.n_past = start_pos + tokens.len() as i32;
         profiler.finish_prompt(tokens.len());
+        // Hand the buffer back for the next call.
+        self.token_scratch = tokens;
 
         // 2. Autoregressive loop with StreamingLLM Attention-Sink & Window Eviction
         let mut generated_count = 0;
         let mut output_text = String::new();
         let mut piece_buf = [0 as c_char; 256];
         let mut utf8 = Utf8StreamDecoder::new();
+        let mut sampler = SamplerChain::from_params(params);
         let max_target = params.max_tokens;
         let cap = self.sink_tokens + self.window_size;
 
         while generated_count < max_target {
-            let token = unsafe { self.sample_greedy_argmax() };
+            let token = unsafe { sampler.sample(self.ctx, -1) };
 
             if unsafe { llama_vocab_is_eog(self.vocab, token) } {
                 break;
