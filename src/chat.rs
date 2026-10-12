@@ -110,6 +110,23 @@ impl ChatSession {
         prompt
     }
 
+    /// Builds only the new-turn suffix for an engine that already holds the conversation in its
+    /// KV cache. The previous assistant turn ended on its end-of-turn token, which the engine
+    /// never decodes into the cache, so the suffix re-emits it before the new user turn.
+    pub fn build_suffix_prompt(&self, latest_user_msg: &str) -> String {
+        if self.is_llama {
+            format!(
+                "<|eot_id|><|start_header_id|>user<|end_header_id|>\n\n{}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+                latest_user_msg
+            )
+        } else {
+            format!(
+                "<|im_end|>\n<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n",
+                latest_user_msg
+            )
+        }
+    }
+
     pub fn print_info(&self) {
         let mem = self.engine.memory_profile();
         println!("\n╔═════════════════════════════════════════════════════════════════════════════╗");
@@ -129,7 +146,13 @@ impl ChatSession {
     }
 
     pub fn step(&mut self, user_input: &str) -> Result<()> {
-        let full_prompt = self.build_prompt(user_input);
+        // With an active KV context only the new turn needs prefill; otherwise (first turn,
+        // after /clear, or after an engine reset) fall back to the full history prompt.
+        let prompt = if self.engine.is_stateful() && self.engine.n_past() > 0 {
+            self.build_suffix_prompt(user_input)
+        } else {
+            self.build_prompt(user_input)
+        };
 
         let params = GenerationParams {
             max_tokens: 512,
@@ -147,7 +170,7 @@ impl ChatSession {
         print!("\x1b[1;32mAssistant:\x1b[0m ");
         io::stdout().flush()?;
 
-        let output = self.engine.generate(&full_prompt, &params, Some(&mut on_token))?;
+        let output = self.engine.generate_incremental(&prompt, &params, Some(&mut on_token))?;
         println!();
 
         let assistant_reply = output.text;
@@ -334,6 +357,9 @@ pub fn run_chat_repl(model_arg: Option<&str>) -> Result<()> {
             "/clear" => {
                 let turns = session.history.len();
                 session.history.clear();
+                if let Err(e) = session.engine.reset_context() {
+                    eprintln!("\x1b[1;31mContext reset error:\x1b[0m {:?}", e);
+                }
                 println!("Conversation context cleared! ({} previous turns erased)\n", turns);
             }
             "/cache" => {

@@ -249,6 +249,62 @@ pub struct GenerationOutput {
     pub memory: ModelMemoryProfile,
 }
 
+/// Streaming UTF-8 decoder buffering partial multi-byte code units across token boundaries.
+#[derive(Debug, Default, Clone)]
+pub struct Utf8StreamDecoder {
+    pending: Vec<u8>,
+}
+
+impl Utf8StreamDecoder {
+    pub fn new() -> Self {
+        Self {
+            pending: Vec::with_capacity(16),
+        }
+    }
+
+    /// Feed raw token piece bytes, returning any fully formed valid UTF-8 string chunk.
+    pub fn feed(&mut self, bytes: &[u8]) -> Option<String> {
+        self.pending.extend_from_slice(bytes);
+        match std::str::from_utf8(&self.pending) {
+            Ok(valid) => {
+                let s = valid.to_string();
+                self.pending.clear();
+                Some(s)
+            }
+            Err(e) => {
+                let valid_up_to = e.valid_up_to();
+                if valid_up_to > 0 {
+                    let s = unsafe { std::str::from_utf8_unchecked(&self.pending[..valid_up_to]) }.to_string();
+                    self.pending.drain(..valid_up_to);
+                    Some(s)
+                } else if e.error_len().is_some() {
+                    let s = String::from_utf8_lossy(&self.pending).to_string();
+                    self.pending.clear();
+                    Some(s)
+                } else {
+                    None
+                }
+            }
+        }
+    }
+
+    /// Flush any remaining buffered bytes at end of generation.
+    pub fn flush(&mut self) -> Option<String> {
+        if self.pending.is_empty() {
+            None
+        } else {
+            let s = String::from_utf8_lossy(&self.pending).to_string();
+            self.pending.clear();
+            Some(s)
+        }
+    }
+
+    /// Clear buffered bytes.
+    pub fn reset(&mut self) {
+        self.pending.clear();
+    }
+}
+
 /// Generalized trait for LLM inference engines.
 /// Allows swapping between high-level safe engines, low-level raw FFI engines,
 /// and different execution backends.
@@ -271,6 +327,31 @@ pub trait ModelEngine {
         on_token: Option<&mut dyn FnMut(&str) -> bool>,
     ) -> Result<GenerationOutput>;
 
+    /// Whether this engine supports stateful incremental continuation across turns.
+    fn is_stateful(&self) -> bool {
+        false
+    }
+
+    /// Current token position in the active KV sequence.
+    fn n_past(&self) -> i32 {
+        0
+    }
+
+    /// Reset any active conversation context and clear the KV cache.
+    fn reset_context(&mut self) -> Result<()> {
+        Ok(())
+    }
+
+    /// Generate continuation from the active KV cache, prefilling only the new suffix prompt.
+    fn generate_incremental(
+        &mut self,
+        suffix_prompt: &str,
+        params: &GenerationParams,
+        on_token: Option<&mut dyn FnMut(&str) -> bool>,
+    ) -> Result<GenerationOutput> {
+        self.generate(suffix_prompt, params, on_token)
+    }
+
     /// Programmatic benchmark run without IO/printing overhead.
     fn benchmark(&mut self, prompt: &str, n_tokens: usize) -> Result<BenchmarkReport> {
         let params = GenerationParams {
@@ -280,5 +361,50 @@ pub trait ModelEngine {
         };
         let out = self.generate(prompt, &params, None)?;
         Ok(out.report)
+    }
+}
+
+#[cfg(test)]
+mod utf8_decoder_tests {
+    use super::Utf8StreamDecoder;
+
+    #[test]
+    fn passes_through_ascii() {
+        let mut d = Utf8StreamDecoder::new();
+        assert_eq!(d.feed(b"hello").as_deref(), Some("hello"));
+        assert_eq!(d.flush(), None);
+    }
+
+    #[test]
+    fn reassembles_split_multibyte_codepoint() {
+        // U+1F680 (rocket) is 4 bytes: F0 9F 9A 80, split across three tokens.
+        let mut d = Utf8StreamDecoder::new();
+        assert_eq!(d.feed(&[0xF0, 0x9F]), None);
+        assert_eq!(d.feed(&[0x9A]), None);
+        assert_eq!(d.feed(&[0x80]).as_deref(), Some("\u{1F680}"));
+        assert_eq!(d.flush(), None);
+    }
+
+    #[test]
+    fn emits_valid_prefix_and_keeps_partial_tail() {
+        // "a" followed by the first byte of a 2-byte sequence (U+00E9 = C3 A9).
+        let mut d = Utf8StreamDecoder::new();
+        assert_eq!(d.feed(&[b'a', 0xC3]).as_deref(), Some("a"));
+        assert_eq!(d.feed(&[0xA9]).as_deref(), Some("\u{e9}"));
+    }
+
+    #[test]
+    fn flush_recovers_dangling_bytes_lossily() {
+        let mut d = Utf8StreamDecoder::new();
+        assert_eq!(d.feed(&[0xE2, 0x82]), None);
+        assert_eq!(d.flush().as_deref(), Some("\u{FFFD}"));
+        assert_eq!(d.flush(), None);
+    }
+
+    #[test]
+    fn invalid_bytes_do_not_stall_the_stream() {
+        let mut d = Utf8StreamDecoder::new();
+        assert!(d.feed(&[0xFF]).is_some());
+        assert_eq!(d.feed(b"ok").as_deref(), Some("ok"));
     }
 }

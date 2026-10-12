@@ -23,7 +23,7 @@ use llama_cpp_sys_2::{
 use crate::benchmark::TokenSpeedCalculator;
 use crate::engine::{
     global_backend, EngineConfig, GenerationOutput, GenerationParams, ModelEngine,
-    ModelMemoryProfile,
+    ModelMemoryProfile, Utf8StreamDecoder,
 };
 
 /// Engine with active KV cache eviction and positional shifting.
@@ -37,6 +37,7 @@ pub struct SlidingWindowEngine {
     sink_tokens: i32,
     window_size: i32,
     evict_chunk: i32,
+    pub n_past: i32,
     #[allow(dead_code)]
     devices_buf: Box<[ggml_backend_dev_t; 16]>,
 }
@@ -121,6 +122,7 @@ impl SlidingWindowEngine {
                 sink_tokens,
                 window_size,
                 evict_chunk,
+                n_past: 0,
                 devices_buf,
             })
         }
@@ -182,6 +184,224 @@ impl Drop for SlidingWindowEngine {
     }
 }
 
+impl SlidingWindowEngine {
+    /// Clears the entire KV cache and resets the sequence position to zero.
+    fn reset_kv(&mut self) {
+        unsafe {
+            let mem = llama_get_memory(self.ctx);
+            llama_memory_clear(mem, true);
+        }
+        self.n_past = 0;
+    }
+
+    /// Evicts `count` tokens immediately after the attention-sink region and shifts the
+    /// trailing window backwards so sequence positions remain contiguous.
+    unsafe fn evict_middle(&mut self, count: i32) {
+        let mem = llama_get_memory(self.ctx);
+        let p0 = self.sink_tokens;
+        let p1 = p0 + count;
+        // Evict intermediate tokens [p0, p1)
+        llama_memory_seq_rm(mem, 0, p0, p1);
+        // Shift trailing window tokens backwards by `count`
+        llama_memory_seq_add(mem, 0, p1, self.n_past, -count);
+        self.n_past -= count;
+    }
+
+    /// Shared generation core.
+    ///
+    /// * `incremental == false`: the KV cache is wiped and `prompt` is evaluated from position 0.
+    /// * `incremental == true` (with an active context): `prompt` is only the new suffix and is
+    ///   appended after the existing `n_past` tokens, evicting the middle of the window if needed.
+    fn run_generation(
+        &mut self,
+        prompt: &str,
+        params: &GenerationParams,
+        mut on_token: Option<&mut dyn FnMut(&str) -> bool>,
+        incremental: bool,
+    ) -> Result<GenerationOutput> {
+        let mut profiler = TokenSpeedCalculator::new();
+        profiler.start();
+
+        // A fresh sequence is required for stateless calls or when no prior context exists.
+        let fresh = !incremental || self.n_past == 0;
+        if fresh {
+            self.reset_kv();
+        }
+
+        // Suffix prompts and already-templated prompts are used verbatim.
+        let formatted = if !fresh
+            || prompt.starts_with("<|im_start|>")
+            || prompt.starts_with("<|start_header_id|>")
+        {
+            prompt.to_string()
+        } else {
+            format!(
+                "<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n",
+                prompt
+            )
+        };
+        let c_text = CString::new(formatted)?;
+
+        let max_alloc = c_text.to_bytes().len() + 512;
+        let mut tokens = vec![0 as llama_token; max_alloc];
+        let n_tokens = unsafe {
+            llama_tokenize(
+                self.vocab,
+                c_text.as_ptr(),
+                c_text.to_bytes().len() as i32,
+                tokens.as_mut_ptr(),
+                tokens.len() as i32,
+                // BOS/special insertion only belongs at the start of a sequence.
+                fresh,
+                true,
+            )
+        };
+
+        if n_tokens <= 0 {
+            bail!("Raw tokenize failed or returned 0 tokens");
+        }
+        tokens.truncate(n_tokens as usize);
+
+        let max_capacity = (self.sink_tokens + self.window_size) as usize;
+        if fresh {
+            // StreamingLLM Attention-Sink Pruning if prompt exceeds window budget
+            if tokens.len() > max_capacity {
+                let sink_count = (self.sink_tokens as usize).min(tokens.len());
+                let tail_count = max_capacity.saturating_sub(sink_count);
+                let mut pruned = Vec::with_capacity(max_capacity);
+                pruned.extend_from_slice(&tokens[..sink_count]);
+                let tail_start = tokens.len().saturating_sub(tail_count);
+                pruned.extend_from_slice(&tokens[tail_start..]);
+                tokens = pruned;
+            }
+        } else {
+            // Make room for the suffix by evicting the middle of the existing window.
+            let cap = max_capacity as i32;
+            let overflow = self.n_past + tokens.len() as i32 - cap;
+            if overflow > 0 {
+                let chunk = self.evict_chunk.max(1);
+                let rounded = ((overflow + chunk - 1) / chunk) * chunk;
+                let evictable = (self.n_past - self.sink_tokens).max(0);
+                let evict = rounded.min(evictable);
+                if evict > 0 {
+                    unsafe { self.evict_middle(evict) };
+                }
+                // If the suffix alone still exceeds the remaining room, keep its tail.
+                let room = (cap - self.n_past).max(1) as usize;
+                if tokens.len() > room {
+                    let drop_count = tokens.len() - room;
+                    tokens.drain(..drop_count);
+                }
+            }
+        }
+
+        // 1. Evaluate (suffix) prompt with chunked prefill starting at the current position
+        profiler.start_prompt();
+        let start_pos = self.n_past;
+        unsafe {
+            let last_idx = tokens.len() - 1;
+            for (chunk_idx, chunk) in tokens.chunks(512).enumerate() {
+                self.clear_batch();
+                let base = chunk_idx * 512;
+                for (offset, &tok) in chunk.iter().enumerate() {
+                    let idx = base + offset;
+                    let is_last = idx == last_idx;
+                    self.add_to_batch(tok, start_pos + idx as i32, is_last);
+                }
+
+                let status = llama_decode(self.ctx, self.batch);
+                if status != 0 {
+                    bail!("Chunked prefill llama_decode failed with error code: {}", status);
+                }
+            }
+        }
+        self.n_past = start_pos + tokens.len() as i32;
+        profiler.finish_prompt(tokens.len());
+
+        // 2. Autoregressive loop with StreamingLLM Attention-Sink & Window Eviction
+        let mut generated_count = 0;
+        let mut output_text = String::new();
+        let mut piece_buf = [0 as c_char; 256];
+        let mut utf8 = Utf8StreamDecoder::new();
+        let max_target = params.max_tokens;
+        let cap = self.sink_tokens + self.window_size;
+
+        while generated_count < max_target {
+            let token = unsafe { self.sample_greedy_argmax() };
+
+            if unsafe { llama_vocab_is_eog(self.vocab, token) } {
+                break;
+            }
+
+            profiler.record_token();
+            generated_count += 1;
+
+            let bytes_written = unsafe {
+                llama_token_to_piece(
+                    self.vocab,
+                    token,
+                    piece_buf.as_mut_ptr(),
+                    piece_buf.len() as i32,
+                    0,
+                    true,
+                )
+            };
+
+            if bytes_written > 0 {
+                let u8_slice = unsafe {
+                    std::slice::from_raw_parts(piece_buf.as_ptr().cast::<u8>(), bytes_written as usize)
+                };
+                // Multi-byte code points may be split across tokens; only emit complete ones.
+                if let Some(piece) = utf8.feed(u8_slice) {
+                    output_text.push_str(&piece);
+                    if let Some(cb) = on_token.as_mut() {
+                        let cont = cb(&piece);
+                        if !cont {
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // KV Cache Surgery: Check if we reached the attention-sink + window bound
+            if self.n_past >= cap {
+                let chunk = self.evict_chunk;
+                unsafe { self.evict_middle(chunk) };
+            }
+
+            // Step token at the current sequence position
+            unsafe {
+                self.clear_batch();
+                let pos = self.n_past;
+                self.add_to_batch(token, pos, true);
+                let status = llama_decode(self.ctx, self.batch);
+                if status != 0 {
+                    bail!("llama_decode step failed with error code: {}", status);
+                }
+            }
+            self.n_past += 1;
+        }
+
+        // Flush any trailing partial bytes so nothing is silently dropped.
+        if let Some(rest) = utf8.flush() {
+            output_text.push_str(&rest);
+            if let Some(cb) = on_token.as_mut() {
+                let _ = cb(&rest);
+            }
+        }
+
+        let report = profiler.stop();
+        let memory = self.memory_profile();
+
+        Ok(GenerationOutput {
+            text: output_text,
+            generated_tokens: generated_count,
+            report,
+            memory,
+        })
+    }
+}
+
 impl ModelEngine for SlidingWindowEngine {
     fn name(&self) -> &'static str {
         "Sliding-Window Attention (Sink=4, Win=64, O(1) Cache)"
@@ -220,157 +440,39 @@ impl ModelEngine for SlidingWindowEngine {
         &mut self,
         prompt: &str,
         params: &GenerationParams,
-        mut on_token: Option<&mut dyn FnMut(&str) -> bool>,
+        on_token: Option<&mut dyn FnMut(&str) -> bool>,
     ) -> Result<GenerationOutput> {
-        let mut profiler = TokenSpeedCalculator::new();
-        profiler.start();
-
-        // 0. Reset KV cache before evaluating new prompt
-        unsafe {
-            let mem = llama_get_memory(self.ctx);
-            llama_memory_clear(mem, true);
+        let result = self.run_generation(prompt, params, on_token, false);
+        if result.is_err() {
+            // Leave the engine in a clean state so the next turn re-prefills from scratch.
+            self.reset_kv();
         }
+        result
+    }
 
-        let formatted = if prompt.starts_with("<|im_start|>") || prompt.starts_with("<|start_header_id|>") {
-            prompt.to_string()
-        } else {
-            format!(
-                "<|im_start|>user\n{}<|im_end|>\n<|im_start|>assistant\n",
-                prompt
-            )
-        };
-        let c_text = CString::new(formatted)?;
+    fn is_stateful(&self) -> bool {
+        true
+    }
 
-        let max_alloc = c_text.to_bytes().len() + 512;
-        let mut tokens = vec![0 as llama_token; max_alloc];
-        let n_tokens = unsafe {
-            llama_tokenize(
-                self.vocab,
-                c_text.as_ptr(),
-                c_text.to_bytes().len() as i32,
-                tokens.as_mut_ptr(),
-                tokens.len() as i32,
-                true,
-                true,
-            )
-        };
+    fn n_past(&self) -> i32 {
+        self.n_past
+    }
 
-        if n_tokens <= 0 {
-            bail!("Raw tokenize failed or returned 0 tokens");
+    fn reset_context(&mut self) -> Result<()> {
+        self.reset_kv();
+        Ok(())
+    }
+
+    fn generate_incremental(
+        &mut self,
+        suffix_prompt: &str,
+        params: &GenerationParams,
+        on_token: Option<&mut dyn FnMut(&str) -> bool>,
+    ) -> Result<GenerationOutput> {
+        let result = self.run_generation(suffix_prompt, params, on_token, true);
+        if result.is_err() {
+            self.reset_kv();
         }
-        tokens.truncate(n_tokens as usize);
-
-        // StreamingLLM Attention-Sink Pruning if prompt exceeds window budget
-        let max_capacity = (self.sink_tokens + self.window_size) as usize;
-        if tokens.len() > max_capacity {
-            let sink_count = (self.sink_tokens as usize).min(tokens.len());
-            let tail_count = max_capacity.saturating_sub(sink_count);
-            let mut pruned = Vec::with_capacity(max_capacity);
-            pruned.extend_from_slice(&tokens[..sink_count]);
-            let tail_start = tokens.len().saturating_sub(tail_count);
-            pruned.extend_from_slice(&tokens[tail_start..]);
-            tokens = pruned;
-        }
-
-        // 1. Evaluate prompt with chunked prefill
-        profiler.start_prompt();
-        unsafe {
-            let last_idx = tokens.len() - 1;
-            for (chunk_idx, chunk) in tokens.chunks(512).enumerate() {
-                self.clear_batch();
-                let base_pos = chunk_idx * 512;
-                for (offset, &tok) in chunk.iter().enumerate() {
-                    let global_idx = base_pos + offset;
-                    let is_last = global_idx == last_idx;
-                    self.add_to_batch(tok, global_idx as i32, is_last);
-                }
-
-                let status = llama_decode(self.ctx, self.batch);
-                if status != 0 {
-                    bail!("Chunked prefill llama_decode failed with error code: {}", status);
-                }
-            }
-        }
-        profiler.finish_prompt(tokens.len());
-
-        // 2. Autoregressive loop with StreamingLLM Attention-Sink & Window Eviction
-        let mut n_cur = tokens.len() as i32;
-        let mut generated_count = 0;
-        let mut output_text = String::new();
-        let mut piece_buf = [0 as c_char; 256];
-        let max_target = params.max_tokens;
-
-        while generated_count < max_target {
-            let token = unsafe { self.sample_greedy_argmax() };
-
-            if unsafe { llama_vocab_is_eog(self.vocab, token) } {
-                break;
-            }
-
-            profiler.record_token();
-            generated_count += 1;
-
-            let bytes_written = unsafe {
-                llama_token_to_piece(
-                    self.vocab,
-                    token,
-                    piece_buf.as_mut_ptr(),
-                    piece_buf.len() as i32,
-                    0,
-                    true,
-                )
-            };
-
-            if bytes_written > 0 {
-                let u8_slice = unsafe {
-                    std::slice::from_raw_parts(piece_buf.as_ptr().cast::<u8>(), bytes_written as usize)
-                };
-                if let Ok(piece) = std::str::from_utf8(u8_slice) {
-                    output_text.push_str(piece);
-                    if let Some(cb) = on_token.as_mut() {
-                        let cont = cb(piece);
-                        if !cont {
-                            break;
-                        }
-                    }
-                }
-            }
-
-            // KV Cache Surgery: Check if we reached the attention-sink + window bound
-            if n_cur >= self.sink_tokens + self.window_size {
-                let mem = unsafe { llama_get_memory(self.ctx) };
-                let p0 = self.sink_tokens;
-                let p1 = self.sink_tokens + self.evict_chunk;
-
-                unsafe {
-                    // Evict intermediate tokens [p0, p1)
-                    llama_memory_seq_rm(mem, 0, p0, p1);
-                    // Shift trailing window tokens backwards by evict_chunk
-                    llama_memory_seq_add(mem, 0, p1, n_cur, -self.evict_chunk);
-                }
-                n_cur -= self.evict_chunk;
-            }
-
-            // Step token at n_cur
-            unsafe {
-                self.clear_batch();
-                self.add_to_batch(token, n_cur, true);
-                let status = llama_decode(self.ctx, self.batch);
-                if status != 0 {
-                    bail!("llama_decode step failed with error code: {}", status);
-                }
-            }
-            n_cur += 1;
-        }
-
-        let report = profiler.stop();
-        let memory = self.memory_profile();
-
-        Ok(GenerationOutput {
-            text: output_text,
-            generated_tokens: generated_count,
-            report,
-            memory,
-        })
+        result
     }
 }

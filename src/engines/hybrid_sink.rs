@@ -76,4 +76,25 @@ impl ModelEngine for HybridSinkEngine {
     ) -> Result<GenerationOutput> {
         self.inner.generate(prompt, params, on_token)
     }
+
+    fn is_stateful(&self) -> bool {
+        self.inner.is_stateful()
+    }
+
+    fn n_past(&self) -> i32 {
+        self.inner.n_past()
+    }
+
+    fn reset_context(&mut self) -> Result<()> {
+        self.inner.reset_context()
+    }
+
+    fn generate_incremental(
+        &mut self,
+        suffix_prompt: &str,
+        params: &GenerationParams,
+        on_token: Option<&mut dyn FnMut(&str) -> bool>,
+    ) -> Result<GenerationOutput> {
+        self.inner.generate_incremental(suffix_prompt, params, on_token)
+    }
 }
