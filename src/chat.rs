@@ -218,10 +218,10 @@ pub fn list_available_models() -> Vec<PathBuf> {
             if let Ok(entries) = fs::read_dir(dir) {
                 for entry in entries.flatten() {
                     let path = entry.path();
-                    if path.extension().map_or(false, |ext| ext == "gguf") {
-                        if !models.iter().any(|m: &PathBuf| m.file_name() == path.file_name()) {
-                            models.push(path);
-                        }
+                    if path.extension().is_some_and(|ext| ext == "gguf")
+                        && !models.iter().any(|m: &PathBuf| m.file_name() == path.file_name())
+                    {
+                        models.push(path);
                     }
                 }
             }

@@ -51,7 +51,7 @@ impl SplineKvEvaluator {
             for d in 0..self.head_dim {
                 let idx = t * self.head_dim + d;
                 let t_norm = (t as f32) / (self.sequence_length as f32);
-                original[idx] = (t_norm * 3.14159 * 2.0 + (d as f32) * 0.1).sin();
+                original[idx] = (t_norm * std::f32::consts::PI * 2.0 + (d as f32) * 0.1).sin();
             }
         }
 
@@ -61,7 +61,7 @@ impl SplineKvEvaluator {
             for d in 0..self.head_dim {
                 // Fit Chebyshev coefficients c_m for this channel across [0, chunk_size - 1]
                 let mut coeffs = vec![0.0f32; self.poly_degree];
-                for m in 0..self.poly_degree {
+                for (m, coeff) in coeffs.iter_mut().enumerate().take(self.poly_degree) {
                     let mut sum = 0.0f32;
                     for i in 0..self.chunk_size {
                         let t = start_t + i;
@@ -76,7 +76,7 @@ impl SplineKvEvaluator {
                         };
                         sum += original[t * self.head_dim + d] * t_m;
                     }
-                    coeffs[m] = sum * 2.0 / (self.chunk_size as f32);
+                    *coeff = sum * 2.0 / (self.chunk_size as f32);
                 }
 
                 // Reconstruct continuous trajectory
@@ -84,14 +84,14 @@ impl SplineKvEvaluator {
                     let t = start_t + i;
                     let x = 2.0 * (i as f32) / ((self.chunk_size - 1) as f32) - 1.0;
                     let mut val = coeffs[0] * 0.5;
-                    for m in 1..self.poly_degree {
+                    for (m, &coeff) in coeffs.iter().enumerate().take(self.poly_degree).skip(1) {
                         let t_m = match m {
                             1 => x,
                             2 => 2.0 * x * x - 1.0,
                             3 => 4.0 * x * x * x - 3.0 * x,
                             _ => (m as f32 * x.acos()).cos(),
                         };
-                        val += coeffs[m] * t_m;
+                        val += coeff * t_m;
                     }
                     reconstructed[t * self.head_dim + d] = val;
                 }

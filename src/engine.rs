@@ -105,17 +105,12 @@ impl Drop for LlamaModelHandle {
 }
 
 /// KV Cache precision quantization formats.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum KvPrecision {
+    #[default]
     F16,
     Q8_0,
     Q4_0,
-}
-
-impl Default for KvPrecision {
-    fn default() -> Self {
-        Self::F16
-    }
 }
 
 impl KvPrecision {
@@ -244,6 +239,7 @@ pub struct ModelMemoryProfile {
 }
 
 impl ModelMemoryProfile {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         weights_bytes: u64,
         n_params: u64,
@@ -254,7 +250,7 @@ impl ModelMemoryProfile {
         ctx_size: u32,
         precision: KvPrecision,
     ) -> Self {
-        let head_dim = if n_heads > 0 { n_embd / n_heads } else { 0 };
+        let head_dim = n_embd.checked_div(n_heads).unwrap_or(0);
         let bytes_per_element = precision.bytes_per_element();
         let kv_bytes_per_token = (2.0 * n_layers as f64 * n_kv_heads as f64 * head_dim as f64 * bytes_per_element).ceil() as usize;
         let total_kv_cache_bytes = kv_bytes_per_token * ctx_size as usize;

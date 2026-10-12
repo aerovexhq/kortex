@@ -68,8 +68,9 @@ impl OpdmRopeEvaluator {
                 }
             }
 
-            for d in 0..self.head_dim {
-                composite_channel[d] /= (p as f32).sqrt();
+            let sqrt_p = (p as f32).sqrt();
+            for val in composite_channel.iter_mut().take(self.head_dim) {
+                *val /= sqrt_p;
             }
 
             // Coherent CDMA De-Spreading: K_hat_k = (w_k (*) S) * sqrt(P)

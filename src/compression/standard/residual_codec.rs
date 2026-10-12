@@ -29,7 +29,7 @@ impl ResidualCodecEvaluator {
     pub fn evaluate(&self) -> CompressionQualityReport {
         // First token is stored in FP16 (16 bits), subsequent tokens in residual_bits (e.g. 4 bits)
         let total_uncompressed_bits = self.sequence_length * self.head_dim * 16;
-        let total_compressed_bits = (1 * self.head_dim * 16) + ((self.sequence_length - 1) * self.head_dim * self.residual_bits);
+        let total_compressed_bits = (self.head_dim * 16) + ((self.sequence_length - 1) * self.head_dim * self.residual_bits);
 
         let compression_ratio = total_uncompressed_bits as f64 / total_compressed_bits as f64;
         let memory_reduction_pct = (1.0 - (total_compressed_bits as f64 / total_uncompressed_bits as f64)) * 100.0;
@@ -50,9 +50,7 @@ impl ResidualCodecEvaluator {
         let q_levels = (1 << self.residual_bits) as f32; // e.g. 16 levels for 4-bit
         let max_delta = 0.25f32;
 
-        for d in 0..self.head_dim {
-            reconstructed[d] = original[d]; // Token 0 exact
-        }
+        reconstructed[..self.head_dim].copy_from_slice(&original[..self.head_dim]); // Token 0 exact
 
         for t in 1..self.sequence_length {
             for d in 0..self.head_dim {

@@ -70,8 +70,8 @@ pub struct MasterMethodEvaluation {
     pub score: f64,
 }
 
-fn inspect_model_specs(path: &PathBuf, name: &str) -> Result<ModelArchitectureSpecs> {
-    let config = EngineConfig::new(path.clone())
+fn inspect_model_specs(path: &std::path::Path, name: &str) -> Result<ModelArchitectureSpecs> {
+    let config = EngineConfig::new(path.to_path_buf())
         .with_device(Some(1))
         .with_gpu_layers(999);
     let engine = RawFfiEngine::new(config)?;
@@ -90,8 +90,8 @@ fn inspect_model_specs(path: &PathBuf, name: &str) -> Result<ModelArchitectureSp
     })
 }
 
-fn measure_live_gpu_telemetry(path: &PathBuf) -> LiveGpuTelemetry {
-    let config = EngineConfig::new(path.clone())
+fn measure_live_gpu_telemetry(path: &std::path::Path) -> LiveGpuTelemetry {
+    let config = EngineConfig::new(path.to_path_buf())
         .with_device(Some(1))
         .with_gpu_layers(999);
     match RawFfiEngine::new(config) {

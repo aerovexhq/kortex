@@ -26,7 +26,7 @@ impl ZeroCopyPrefixSimulator {
         let uncompressed_total_bytes = self.n_concurrent_sequences * self.shared_prefix_tokens * self.uncompressed_bytes_per_tok;
         
         // With zero-copy sharing: shared prefix is allocated ONCE
-        let compressed_total_bytes = 1 * self.shared_prefix_tokens * self.uncompressed_bytes_per_tok;
+        let compressed_total_bytes = self.shared_prefix_tokens * self.uncompressed_bytes_per_tok;
 
         let compression_ratio = uncompressed_total_bytes as f64 / compressed_total_bytes as f64;
         let memory_reduction_pct = (1.0 - (compressed_total_bytes as f64 / uncompressed_total_bytes as f64)) * 100.0;

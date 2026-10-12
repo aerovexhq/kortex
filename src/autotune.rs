@@ -58,6 +58,7 @@ pub struct ScoreBreakdown {
 
 impl ScoreBreakdown {
     /// Computes the in-depth multi-dimensional efficiency score.
+    #[allow(clippy::too_many_arguments)]
     pub fn compute(
         profile: BenchmarkProfile,
         gen_tok_per_sec: f64,

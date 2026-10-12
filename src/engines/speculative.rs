@@ -408,9 +408,9 @@ impl ModelEngine for SpeculativeEngine {
             let mut accept_len = 0;
             let mut next_token = 0;
 
-            for i in 0..num_drafts {
+            for (i, &draft_tok) in drafts.iter().enumerate().take(num_drafts) {
                 let target_predicted = unsafe { Self::sample_greedy(self.ctx_target, self.vocab, i as i32) };
-                if target_predicted == drafts[i] {
+                if target_predicted == draft_tok {
                     accept_len += 1;
                     accepted_count += 1;
                 } else {
@@ -435,8 +435,7 @@ impl ModelEngine for SpeculativeEngine {
             }
 
             // Emit accepted draft tokens
-            for i in 0..accept_len {
-                let tok = drafts[i];
+            for &tok in drafts.iter().take(accept_len) {
                 profiler.record_token();
                 generated_count += 1;
 

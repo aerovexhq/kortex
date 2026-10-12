@@ -49,10 +49,10 @@ impl HeavyHitterEvaluator {
         let mut original_attention_mass = vec![0.0f32; self.total_tokens];
         let mut reconstructed_attention_mass = vec![0.0f32; self.total_tokens];
 
-        for i in 0..self.total_tokens {
+        for (i, mass) in original_attention_mass.iter_mut().enumerate().take(self.total_tokens) {
             let zipf_rank = (i % 30) + 1;
             let weight = 1.0 / (zipf_rank as f32).powf(1.4);
-            original_attention_mass[i] = weight;
+            *mass = weight;
         }
 
         // SnapKV selects top indices:

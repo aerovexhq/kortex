@@ -41,7 +41,7 @@ impl FrequencyDctEvaluator {
     pub fn evaluate(&self) -> CompressionQualityReport {
         // Retained: F float16s + (B - F) 1-bit signs vs B float16s (16 * B bits)
         let uncompressed_bits = self.block_size * 16;
-        let compressed_bits = (self.retained_freqs * 16) + (self.block_size - self.retained_freqs) * 1;
+        let compressed_bits = (self.retained_freqs * 16) + (self.block_size - self.retained_freqs);
         let compression_ratio = uncompressed_bits as f64 / compressed_bits as f64;
         let memory_reduction_pct = (1.0 - (1.0 / compression_ratio)) * 100.0;
         let compressed_bytes_per_tok = self.uncompressed_bytes_per_tok as f64 / compression_ratio;
@@ -67,7 +67,7 @@ impl FrequencyDctEvaluator {
             for d in 0..self.head_dim {
                 // Forward DCT-II
                 let mut dct_coeffs = vec![0.0f32; self.block_size];
-                for k in 0..self.block_size {
+                for (k, coeff) in dct_coeffs.iter_mut().enumerate().take(self.block_size) {
                     let mut sum = 0.0f32;
                     for i in 0..self.block_size {
                         let t = start_t + i;
@@ -75,23 +75,23 @@ impl FrequencyDctEvaluator {
                         let angle = std::f32::consts::PI / n * ((i as f32) + 0.5) * (k as f32);
                         sum += val * angle.cos();
                     }
-                    dct_coeffs[k] = sum;
+                    *coeff = sum;
                 }
 
                 // Truncate high frequencies beyond retained_freqs (keep low freqs exact, zero-out or 1-bit sign)
-                for k in self.retained_freqs..self.block_size {
+                for coeff in dct_coeffs.iter_mut().take(self.block_size).skip(self.retained_freqs) {
                     // Approximate high frequency magnitude with small mean envelope + 1-bit sign
-                    let sign = if dct_coeffs[k] >= 0.0 { 1.0 } else { -1.0 };
-                    dct_coeffs[k] = sign * 0.02; 
+                    let sign = if *coeff >= 0.0 { 1.0 } else { -1.0 };
+                    *coeff = sign * 0.02; 
                 }
 
                 // Inverse DCT-III (IDCT)
                 for i in 0..self.block_size {
                     let t = start_t + i;
                     let mut sum = dct_coeffs[0] * 0.5;
-                    for k in 1..self.block_size {
+                    for (k, &coeff) in dct_coeffs.iter().enumerate().take(self.block_size).skip(1) {
                         let angle = std::f32::consts::PI / n * ((i as f32) + 0.5) * (k as f32);
-                        sum += dct_coeffs[k] * angle.cos();
+                        sum += coeff * angle.cos();
                     }
                     reconstructed[t * self.head_dim + d] = sum * (2.0 / n);
                 }

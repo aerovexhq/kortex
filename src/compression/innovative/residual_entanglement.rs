@@ -60,10 +60,8 @@ impl ResidualEntanglementEvaluator {
         }
 
         // Layer 0 is exact base
-        for i in 0..base_elements {
-            original[i] = base_layer[i];
-            reconstructed[i] = base_layer[i];
-        }
+        original[..base_elements].copy_from_slice(&base_layer[..base_elements]);
+        reconstructed[..base_elements].copy_from_slice(&base_layer[..base_elements]);
 
         // Subsequent layers l = 1 .. L-1: K_l = base + low-rank perturbation Delta_l
         for l in 1..self.n_layers {

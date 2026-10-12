@@ -37,8 +37,8 @@ pub struct ModelCompressionSuiteResult {
     pub reports: Vec<CompressionQualityReport>,
 }
 
-fn inspect_model_specs(path: &PathBuf, name: &str) -> Result<ModelArchitectureSpecs> {
-    let config = EngineConfig::new(path.clone())
+fn inspect_model_specs(path: &std::path::Path, name: &str) -> Result<ModelArchitectureSpecs> {
+    let config = EngineConfig::new(path.to_path_buf())
         .with_device(Some(1))
         .with_gpu_layers(999);
     let engine = RawFfiEngine::new(config)?;
@@ -57,8 +57,8 @@ fn inspect_model_specs(path: &PathBuf, name: &str) -> Result<ModelArchitectureSp
     })
 }
 
-fn run_live_baseline(path: &PathBuf) -> (f64, f64) {
-    let config = EngineConfig::new(path.clone())
+fn run_live_baseline(path: &std::path::Path) -> (f64, f64) {
+    let config = EngineConfig::new(path.to_path_buf())
         .with_device(Some(1))
         .with_gpu_layers(999);
     match RawFfiEngine::new(config) {

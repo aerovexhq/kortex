@@ -135,13 +135,29 @@ impl ModelCache {
         cache
     }
 
-    /// Save cache to disk.
+    /// Save cache to disk, mirroring to monorepo analysis path if present.
     pub fn save(&self) -> Result<()> {
         if let Some(parent) = self.cache_path.parent() {
             fs::create_dir_all(parent)?;
         }
         let json = serde_json::to_string_pretty(&self.entries)?;
-        fs::write(&self.cache_path, json)?;
+        fs::write(&self.cache_path, &json)?;
+
+        // Also mirror to monorepo analysis locations if they exist
+        let mirror_paths = [
+            PathBuf::from("analysis/model_profile_cache.json"),
+            PathBuf::from("../../analysis/modules/kortex/model_profile_cache.json"),
+            PathBuf::from("/home/usr/Projects/aerovex/analysis/modules/kortex/model_profile_cache.json"),
+        ];
+
+        for mirror in &mirror_paths {
+            if let Some(p) = mirror.parent() {
+                if p.exists() {
+                    let _ = fs::write(mirror, &json);
+                }
+            }
+        }
+
         Ok(())
     }
 
