@@ -41,7 +41,12 @@ pub struct SpeculativeEngine {
     target_batch: llama_batch,
     config: EngineConfig,
     device_label: String,
-    draft_k: usize,
+    #[allow(dead_code)]
+    initial_k: usize,
+    /// Exponential moving average of acceptance rate (0.0 to 1.0)
+    ema_acceptance: f64,
+    /// Dynamic draft horizon K in [1, 6]
+    current_k: usize,
     #[allow(dead_code)]
     devices_buf: Box<[ggml_backend_dev_t; 16]>,
     pub last_stats: SpeculativeStats,
@@ -51,6 +56,14 @@ unsafe impl Send for SpeculativeEngine {}
 unsafe impl Sync for SpeculativeEngine {}
 
 impl SpeculativeEngine {
+    pub fn current_k(&self) -> usize {
+        self.current_k
+    }
+
+    pub fn ema_acceptance(&self) -> f64 {
+        self.ema_acceptance
+    }
+
     pub fn new(
         draft_path: &std::path::Path,
         target_path: &std::path::Path,
@@ -116,6 +129,8 @@ impl SpeculativeEngine {
             let draft_batch = llama_batch_init(512, 0, 1);
             let target_batch = llama_batch_init(512, 0, 1);
 
+            let initial_k = draft_k.clamp(1, 6);
+
             Ok(Self {
                 model_draft,
                 ctx_draft,
@@ -126,7 +141,9 @@ impl SpeculativeEngine {
                 target_batch,
                 config,
                 device_label,
-                draft_k,
+                initial_k,
+                ema_acceptance: 0.70, // Baseline assumption: 70% acceptance
+                current_k: initial_k,
                 devices_buf,
                 last_stats: SpeculativeStats {
                     total_generated: 0,
@@ -338,11 +355,12 @@ impl ModelEngine for SpeculativeEngine {
                 }
             }
 
-            // Step A: Draft K candidate tokens from 0.5B model
-            let mut drafts: Vec<llama_token> = Vec::with_capacity(self.draft_k);
+            // Step A: Draft K candidate tokens from 0.5B model using dynamic horizon
+            let active_k = self.current_k;
+            let mut drafts: Vec<llama_token> = Vec::with_capacity(active_k);
             let mut draft_tok = current_token;
 
-            for step in 0..self.draft_k {
+            for step in 0..active_k {
                 unsafe {
                     self.draft_batch.n_tokens = 0;
                     Self::add_to_batch(&mut self.draft_batch, draft_tok, n_cur + step as i32, true);
@@ -399,6 +417,21 @@ impl ModelEngine for SpeculativeEngine {
                     next_token = target_predicted;
                     break;
                 }
+            }
+
+            // Dynamic EMA Adaptation:
+            // alpha = 0.20 smoothing factor
+            let round_rate = accept_len as f64 / num_drafts as f64;
+            self.ema_acceptance = 0.80 * self.ema_acceptance + 0.20 * round_rate;
+
+            // Adjust horizon K for subsequent steps:
+            // High acceptance (>80%) -> expand horizon up to 6
+            // Moderate acceptance (50-80%) -> maintain or gently converge
+            // Low acceptance (<50%) -> contract horizon down to 1 to minimize wasted work
+            if self.ema_acceptance > 0.85 && self.current_k < 6 {
+                self.current_k += 1;
+            } else if self.ema_acceptance < 0.45 && self.current_k > 1 {
+                self.current_k -= 1;
             }
 
             // Emit accepted draft tokens

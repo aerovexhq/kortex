@@ -40,6 +40,26 @@ impl HybridSinkEngine {
         })
     }
 
+    /// Creates a hybrid sink engine sharing an already loaded model handle.
+    pub fn from_shared_model(
+        shared: std::sync::Arc<crate::engine::LlamaModelHandle>,
+        mut config: EngineConfig,
+        precision: KvPrecision,
+        sink_tokens: i32,
+        window_size: i32,
+        evict_chunk: i32,
+    ) -> Result<Self> {
+        config.kv_precision = precision;
+        let inner = SlidingWindowEngine::from_shared_model(shared, config, sink_tokens, window_size, evict_chunk)?;
+        Ok(Self {
+            inner,
+            sink_tokens,
+            window_size,
+            evict_chunk,
+            precision,
+        })
+    }
+
     pub fn evict_chunk(&self) -> i32 {
         self.evict_chunk
     }

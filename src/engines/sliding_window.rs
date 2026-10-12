@@ -40,6 +40,7 @@ pub struct SlidingWindowEngine {
     pub n_past: i32,
     /// Reusable tokenization buffer (avoids a per-call heap allocation).
     token_scratch: Vec<llama_token>,
+    _shared_model: Option<std::sync::Arc<crate::engine::LlamaModelHandle>>,
     #[allow(dead_code)]
     devices_buf: Box<[ggml_backend_dev_t; 16]>,
 }
@@ -126,6 +127,66 @@ impl SlidingWindowEngine {
                 evict_chunk,
                 n_past: 0,
                 token_scratch: Vec::with_capacity(1024),
+                _shared_model: None,
+                devices_buf,
+            })
+        }
+    }
+
+    /// Construct a sliding window context from an existing shared model.
+    pub fn from_shared_model(
+        shared: std::sync::Arc<crate::engine::LlamaModelHandle>,
+        mut config: EngineConfig,
+        sink_tokens: i32,
+        window_size: i32,
+        evict_chunk: i32,
+    ) -> Result<Self> {
+        let _backend = global_backend();
+
+        let total_budget = sink_tokens + window_size + evict_chunk + 16;
+        if config.ctx_size < total_budget as u32 {
+            config.ctx_size = total_budget as u32;
+        }
+
+        let devices_buf = Box::new([ptr::null_mut(); 16]);
+        let device_label = match config.device_index {
+            Some(idx) => format!("Vulkan Device [{}] via Raw C FFI (Shared Model)", idx),
+            None => "CPU (Shared Model)".to_string(),
+        };
+
+        unsafe {
+            let mut cparams = llama_context_default_params();
+            cparams.n_ctx = config.ctx_size;
+            cparams.n_batch = 512;
+            cparams.type_k = config.kv_precision.to_ggml_type();
+            cparams.type_v = config.kv_precision.to_ggml_type();
+            if let Some(threads) = config.n_threads {
+                cparams.n_threads = threads;
+            }
+
+            let model = shared.raw_model();
+            let vocab = shared.raw_vocab();
+
+            let ctx = llama_init_from_model(model, cparams);
+            if ctx.is_null() {
+                bail!("llama_init_from_model returned NULL context pointer with shared model");
+            }
+
+            let batch = llama_batch_init(512, 0, 1);
+
+            Ok(Self {
+                model,
+                ctx,
+                vocab,
+                batch,
+                config,
+                device_label,
+                sink_tokens,
+                window_size,
+                evict_chunk,
+                n_past: 0,
+                token_scratch: Vec::with_capacity(1024),
+                _shared_model: Some(shared),
                 devices_buf,
             })
         }
@@ -159,7 +220,7 @@ impl Drop for SlidingWindowEngine {
             if !self.ctx.is_null() {
                 llama_free(self.ctx);
             }
-            if !self.model.is_null() {
+            if self._shared_model.is_none() && !self.model.is_null() {
                 llama_model_free(self.model);
             }
         }

@@ -29,6 +29,7 @@ pub struct RawFfiEngine {
     device_label: String,
     /// Reusable tokenization buffer (avoids a per-call heap allocation).
     token_scratch: Vec<llama_token>,
+    _shared_model: Option<std::sync::Arc<crate::engine::LlamaModelHandle>>,
     #[allow(dead_code)]
     devices_buf: Box<[ggml_backend_dev_t; 16]>,
 }
@@ -100,6 +101,53 @@ impl RawFfiEngine {
                 config,
                 device_label,
                 token_scratch: Vec::with_capacity(1024),
+                _shared_model: None,
+                devices_buf,
+            })
+        }
+    }
+
+    /// Construct a lightweight execution context attached to an existing shared model.
+    pub fn from_shared_model(
+        shared: std::sync::Arc<crate::engine::LlamaModelHandle>,
+        config: EngineConfig,
+    ) -> Result<Self> {
+        let _backend = crate::engine::global_backend();
+        let devices_buf = Box::new([ptr::null_mut(); 16]);
+        let device_label = match config.device_index {
+            Some(idx) => format!("Vulkan Device [{}] via Raw C FFI (Shared Model)", idx),
+            None => "CPU (Shared Model)".to_string(),
+        };
+
+        unsafe {
+            let mut cparams = llama_context_default_params();
+            cparams.n_ctx = config.ctx_size;
+            cparams.n_batch = 512;
+            cparams.type_k = config.kv_precision.to_ggml_type();
+            cparams.type_v = config.kv_precision.to_ggml_type();
+            if let Some(threads) = config.n_threads {
+                cparams.n_threads = threads;
+            }
+
+            let model = shared.raw_model();
+            let vocab = shared.raw_vocab();
+
+            let ctx = llama_init_from_model(model, cparams);
+            if ctx.is_null() {
+                bail!("llama_init_from_model failed with shared model");
+            }
+
+            let batch = llama_batch_init(512, 0, 1);
+
+            Ok(Self {
+                model,
+                ctx,
+                vocab,
+                batch,
+                config,
+                device_label,
+                token_scratch: Vec::with_capacity(1024),
+                _shared_model: Some(shared),
                 devices_buf,
             })
         }
@@ -133,7 +181,7 @@ impl Drop for RawFfiEngine {
             if !self.ctx.is_null() {
                 llama_free(self.ctx);
             }
-            if !self.model.is_null() {
+            if self._shared_model.is_none() && !self.model.is_null() {
                 llama_model_free(self.model);
             }
         }

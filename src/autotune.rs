@@ -207,10 +207,17 @@ impl AutoTuner {
 
         let mut evaluated: Vec<EvaluatedCandidate> = Vec::new();
 
+        // Load model weights once for GPU-based candidates (prevents reloading gigabytes of weights 4-5 times)
+        let shared_gpu_model = crate::engine::LlamaModelHandle::load_from_file(model_path, 999, Some(1)).ok();
+
         // 1. Raw C-ABI FFI (FP16 Baseline)
         {
             let cfg = EngineConfig::new(model_path).with_device(Some(1)).with_gpu_layers(999);
-            if let Ok(mut eng) = RawFfiEngine::new(cfg) {
+            let eng_res = match &shared_gpu_model {
+                Some(shared) => RawFfiEngine::from_shared_model(std::sync::Arc::clone(shared), cfg),
+                None => RawFfiEngine::new(cfg),
+            };
+            if let Ok(mut eng) = eng_res {
                 if let Ok(cand) = self.evaluate_engine("Raw C-ABI FFI (FP16)", false, &mut eng) {
                     evaluated.push(cand);
                 }
@@ -220,7 +227,11 @@ impl AutoTuner {
         // 2. Hardware Quantized KV Cache (Q8_0)
         {
             let cfg = EngineConfig::new(model_path).with_device(Some(1)).with_gpu_layers(999);
-            if let Ok(mut eng) = QuantizedKvEngine::new(cfg, KvPrecision::Q8_0) {
+            let eng_res = match &shared_gpu_model {
+                Some(shared) => QuantizedKvEngine::from_shared_model(std::sync::Arc::clone(shared), cfg, KvPrecision::Q8_0),
+                None => QuantizedKvEngine::new(cfg, KvPrecision::Q8_0),
+            };
+            if let Ok(mut eng) = eng_res {
                 if let Ok(cand) = self.evaluate_engine("Quantized KV (Q8_0)", false, &mut eng) {
                     evaluated.push(cand);
                 }
@@ -230,7 +241,11 @@ impl AutoTuner {
         // 3. Sliding Window Attention (FP16, S=4, Win=64, Chunk=16)
         {
             let cfg = EngineConfig::new(model_path).with_device(Some(1)).with_gpu_layers(999);
-            if let Ok(mut eng) = SlidingWindowEngine::new(cfg, 4, 64, 16) {
+            let eng_res = match &shared_gpu_model {
+                Some(shared) => SlidingWindowEngine::from_shared_model(std::sync::Arc::clone(shared), cfg, 4, 64, 16),
+                None => SlidingWindowEngine::new(cfg, 4, 64, 16),
+            };
+            if let Ok(mut eng) = eng_res {
                 if let Ok(cand) = self.evaluate_engine("Sliding Window (FP16, k=16)", true, &mut eng) {
                     evaluated.push(cand);
                 }
@@ -240,7 +255,11 @@ impl AutoTuner {
         // 4. Hybrid Quantized Sink Engine (Q8_0 + S=4 + Win=64 + Chunk=16)
         {
             let cfg = EngineConfig::new(model_path).with_device(Some(1)).with_gpu_layers(999);
-            if let Ok(mut eng) = HybridSinkEngine::new(cfg, KvPrecision::Q8_0, 4, 64, 16) {
+            let eng_res = match &shared_gpu_model {
+                Some(shared) => HybridSinkEngine::from_shared_model(std::sync::Arc::clone(shared), cfg, KvPrecision::Q8_0, 4, 64, 16),
+                None => HybridSinkEngine::new(cfg, KvPrecision::Q8_0, 4, 64, 16),
+            };
+            if let Ok(mut eng) = eng_res {
                 if let Ok(cand) = self.evaluate_engine("Hybrid Sink (Q8_0, k=16)", true, &mut eng) {
                     evaluated.push(cand);
                 }

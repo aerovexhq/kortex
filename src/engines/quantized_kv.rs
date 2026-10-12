@@ -21,6 +21,17 @@ impl QuantizedKvEngine {
         Ok(Self { inner, precision })
     }
 
+    /// Creates a quantized KV context sharing an already loaded model handle.
+    pub fn from_shared_model(
+        shared: std::sync::Arc<crate::engine::LlamaModelHandle>,
+        mut config: EngineConfig,
+        precision: KvPrecision,
+    ) -> Result<Self> {
+        config.kv_precision = precision;
+        let inner = RawFfiEngine::from_shared_model(shared, config)?;
+        Ok(Self { inner, precision })
+    }
+
     pub fn precision(&self) -> KvPrecision {
         self.precision
     }

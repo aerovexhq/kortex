@@ -26,6 +26,84 @@ pub fn silence_llama_logs() {
     }
 }
 
+/// Thread-safe RAII container holding a shared `*mut llama_cpp_sys_2::llama_model`.
+/// In llama.cpp, `llama_model` is read-only after loading and safe to share across threads/contexts.
+pub struct LlamaModelHandle {
+    model: *mut llama_cpp_sys_2::llama_model,
+    vocab: *const llama_cpp_sys_2::llama_vocab,
+}
+
+unsafe impl Send for LlamaModelHandle {}
+unsafe impl Sync for LlamaModelHandle {}
+
+impl LlamaModelHandle {
+    /// Load a model from file using the provided GPU/offload configuration.
+    pub fn load_from_file(
+        path: &std::path::Path,
+        n_gpu_layers: u32,
+        device_index: Option<usize>,
+    ) -> Result<std::sync::Arc<Self>> {
+        use std::ffi::CString;
+        use std::ptr;
+        use anyhow::{bail, Context};
+        use llama_cpp_sys_2::{
+            ggml_backend_dev_get, ggml_backend_dev_t, llama_model_default_params,
+            llama_model_get_vocab, llama_model_load_from_file,
+        };
+
+        let _backend = global_backend();
+
+        let mut devices_buf: [ggml_backend_dev_t; 16] = [ptr::null_mut(); 16];
+        unsafe {
+            let mut mparams = llama_model_default_params();
+            mparams.n_gpu_layers = n_gpu_layers as i32;
+
+            if let Some(dev_idx) = device_index {
+                let dev = ggml_backend_dev_get(dev_idx);
+                if !dev.is_null() {
+                    devices_buf[0] = dev;
+                    mparams.devices = devices_buf.as_mut_ptr();
+                }
+            }
+
+            let c_path = CString::new(path.to_str().context("Invalid model path UTF-8")?)?;
+            let model = llama_model_load_from_file(c_path.as_ptr(), mparams);
+            if model.is_null() {
+                bail!("llama_model_load_from_file returned NULL pointer");
+            }
+
+            let vocab = llama_model_get_vocab(model);
+            if vocab.is_null() {
+                llama_cpp_sys_2::llama_model_free(model);
+                bail!("llama_model_get_vocab returned NULL vocab pointer");
+            }
+
+            Ok(std::sync::Arc::new(Self { model, vocab }))
+        }
+    }
+
+    /// Access the underlying raw model pointer.
+    pub fn raw_model(&self) -> *mut llama_cpp_sys_2::llama_model {
+        self.model
+    }
+
+    /// Access the model vocabulary pointer.
+    pub fn raw_vocab(&self) -> *const llama_cpp_sys_2::llama_vocab {
+        self.vocab
+    }
+}
+
+impl Drop for LlamaModelHandle {
+    fn drop(&mut self) {
+        if !self.model.is_null() {
+            unsafe {
+                llama_cpp_sys_2::llama_model_free(self.model);
+            }
+            self.model = std::ptr::null_mut();
+        }
+    }
+}
+
 /// KV Cache precision quantization formats.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum KvPrecision {

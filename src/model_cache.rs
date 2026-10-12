@@ -147,6 +147,7 @@ impl ModelCache {
 
     /// Compute cryptographic SHA-256 hash of a GGUF model file.
     /// Fast header + footer + size hash takes < 15ms even on 7GB files.
+    /// Uses a fixed 64 KB scratch buffer to avoid allocating 8 MB on the heap.
     pub fn hash_model_file<P: AsRef<Path>>(path: P) -> Result<String> {
         let path = path.as_ref();
         let mut file = File::open(path)
@@ -157,19 +158,23 @@ impl ModelCache {
         let mut hasher = Sha256::new();
         hasher.update(file_len.to_le_bytes());
 
-        // Read first 8 MB (contains all GGUF header magic, KV metadata, tensor dictionaries)
-        let sample_size = 8 * 1024 * 1024;
-        let read_len = sample_size.min(file_len) as usize;
-        let mut buffer = vec![0u8; read_len];
-        file.read_exact(&mut buffer)?;
-        hasher.update(&buffer);
+        // Stream the first 8 MB in 64 KB chunks
+        let sample_size = (8 * 1024 * 1024).min(file_len);
+        let mut scratch = [0u8; 64 * 1024];
+        let mut bytes_left = sample_size;
+
+        while bytes_left > 0 {
+            let to_read = (bytes_left as usize).min(scratch.len());
+            file.read_exact(&mut scratch[..to_read])?;
+            hasher.update(&scratch[..to_read]);
+            bytes_left -= to_read as u64;
+        }
 
         // Read last 64 KB (footer/trailing alignment)
-        if file_len > (sample_size + 65536) {
+        if file_len > (8 * 1024 * 1024 + 65536) {
             file.seek(SeekFrom::End(-65536))?;
-            let mut tail_buf = vec![0u8; 65536];
-            file.read_exact(&mut tail_buf)?;
-            hasher.update(&tail_buf);
+            file.read_exact(&mut scratch[..65536])?;
+            hasher.update(&scratch[..65536]);
         }
 
         let hash_result = hasher.finalize();

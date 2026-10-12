@@ -21,16 +21,37 @@ struct SpeculativeResult {
     speedup: f64,
 }
 
+fn dirs_home_model(rel: &str) -> PathBuf {
+    let filename = PathBuf::from(rel).file_name().unwrap().to_os_string();
+    if let Ok(home) = std::env::var("HOME") {
+        PathBuf::from(home).join(".kortex").join("models").join(filename)
+    } else {
+        PathBuf::from(rel)
+    }
+}
+
 fn main() -> Result<()> {
     kortex::engine::silence_llama_logs();
 
-    let draft_path = PathBuf::from("models/qwen2.5-0.5b-instruct-q4_k_m.gguf");
-    let target_path = PathBuf::from("models/qwen2.5-1.5b-instruct-q4_k_m.gguf");
+    let draft_candidates = [
+        PathBuf::from("models/qwen2.5-0.5b-instruct-q4_k_m.gguf"),
+        dirs_home_model("models/qwen2.5-0.5b-instruct-q4_k_m.gguf"),
+    ];
+    let target_candidates = [
+        PathBuf::from("models/qwen2.5-1.5b-instruct-q4_k_m.gguf"),
+        dirs_home_model("models/qwen2.5-1.5b-instruct-q4_k_m.gguf"),
+    ];
 
-    if !draft_path.exists() || !target_path.exists() {
-        eprintln!("Models missing. Please ensure both 0.5B and 1.5B exist.");
-        return Ok(());
-    }
+    let draft_path = draft_candidates.into_iter().find(|p| p.exists());
+    let target_path = target_candidates.into_iter().find(|p| p.exists());
+
+    let (draft_path, target_path) = match (draft_path, target_path) {
+        (Some(d), Some(t)) => (d, t),
+        _ => {
+            eprintln!("Models missing. Please ensure both 0.5B and 1.5B exist in models/ or ~/.kortex/models/.");
+            return Ok(());
+        }
+    };
 
     let prompt = "Explain in one sentence why memory bandwidth limits LLM decoding.";
     let params = GenerationParams {

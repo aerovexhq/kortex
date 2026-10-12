@@ -48,9 +48,16 @@ fn format_winner_summary(reports: &[ModelTuningReport]) {
 fn main() -> Result<()> {
     kortex::engine::silence_llama_logs();
 
-    let models_dir = PathBuf::from("models");
+    let models_dir = if PathBuf::from("models").exists() {
+        PathBuf::from("models")
+    } else if let Ok(home) = std::env::var("HOME") {
+        PathBuf::from(home).join(".kortex").join("models")
+    } else {
+        PathBuf::from("models")
+    };
+
     if !models_dir.exists() {
-        eprintln!("Directory 'models' not found.");
+        eprintln!("Directory 'models' or '~/.kortex/models' not found.");
         return Ok(());
     }
 
@@ -63,8 +70,13 @@ fn main() -> Result<()> {
 
     model_paths.sort();
 
+    if model_paths.len() > 1 && std::env::args().len() > 1 {
+        let filter = std::env::args().nth(1).unwrap();
+        model_paths.retain(|p| p.to_string_lossy().contains(&filter));
+    }
+
     if model_paths.is_empty() {
-        eprintln!("No GGUF models found in 'models/'.");
+        eprintln!("No GGUF models found.");
         return Ok(());
     }
 
@@ -98,17 +110,9 @@ fn main() -> Result<()> {
         println!("    |------|------------------------------|----------|----------|----------|----------|-----------|");
 
         for (rank, cand) in report.candidates.iter().enumerate() {
-            let medal = match rank {
-                0 => "🥇 1",
-                1 => "🥈 2",
-                2 => "🥉 3",
-                _ => "",
-            };
-            let r_str = if medal.is_empty() { format!("{:>4}", rank + 1) } else { medal.to_string() };
-
             println!(
-                "    | {:<4} | {:<28} | {:>8.1} | {:>8.1} | {:>8.2} | {:>8.1} | {:>9.1} |",
-                r_str,
+                "    | {:>4} | {:<28} | {:>8.1} | {:>8.1} | {:>8.2} | {:>8.1} | {:>9.1} |",
+                rank + 1,
                 cand.method_name,
                 cand.report.generation_tok_per_sec,
                 cand.report.time_to_first_token.as_secs_f64() * 1000.0,
