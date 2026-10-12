@@ -1,5 +1,6 @@
 pub mod autotune;
 pub mod benchmark;
+pub mod chat;
 pub mod compression;
 pub mod engine;
 pub mod engines;
