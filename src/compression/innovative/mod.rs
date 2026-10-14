@@ -27,3 +27,15 @@ pub mod lie_group_rope;
 pub mod sinkhorn_wasserstein;
 pub mod spectral_koopman;
 pub mod pyramid_razor;
+
+// Academic Frontier Modules (Agents 6-15)
+pub mod rotor_quant;
+pub mod tensor_train_mps;
+pub mod variational_bottleneck;
+pub mod fractional_memory;
+pub mod compressive_sensing;
+pub mod topological_skeleton;
+pub mod symplectic_hamiltonian;
+pub mod quantum_density_povm;
+pub mod graphon_spectral;
+pub mod dp_lipschitz_sketch;

@@ -78,3 +78,15 @@ pub use innovative::lie_group_rope::*;
 pub use innovative::sinkhorn_wasserstein::*;
 pub use innovative::spectral_koopman::*;
 pub use innovative::pyramid_razor::*;
+
+// Academic Frontier Evaluators (Agents 6-15)
+pub use innovative::rotor_quant::*;
+pub use innovative::tensor_train_mps::*;
+pub use innovative::variational_bottleneck::*;
+pub use innovative::fractional_memory::*;
+pub use innovative::compressive_sensing::*;
+pub use innovative::topological_skeleton::*;
+pub use innovative::symplectic_hamiltonian::*;
+pub use innovative::quantum_density_povm::*;
+pub use innovative::graphon_spectral::*;
+pub use innovative::dp_lipschitz_sketch::*;

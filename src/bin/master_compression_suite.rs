@@ -479,6 +479,76 @@ fn evaluate_all_methods_for_model(
         1.08,
     );
 
+    // 27. Subagent 6 Innovation: Clifford RotorQuant Multivector [RotorQuant-KV]
+    evaluate_and_push(
+        RotorQuantEvaluator::new(seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Clifford Geometric Algebra",
+        1.15,
+    );
+
+    // 28. Subagent 7 Innovation: Matrix Product States Tensor-Train [MPS-TT-KV]
+    evaluate_and_push(
+        TensorTrainMpsEvaluator::new(4, seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Tensor Networks",
+        1.12,
+    );
+
+    // 29. Subagent 8 Innovation: Deep Variational Information Bottleneck [VIB-RVQ-KV]
+    evaluate_and_push(
+        VariationalBottleneckEvaluator::new(seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Information Bottleneck",
+        1.14,
+    );
+
+    // 30. Subagent 9 Innovation: Fractional Caputo Differintegral Memory [FracMem-KV]
+    evaluate_and_push(
+        FractionalMemoryEvaluator::new(seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Fractional Calculus",
+        1.16,
+    );
+
+    // 31. Subagent 10 Innovation: Galois Chirp Compressive Sensing [CS-Chirp-OMP]
+    evaluate_and_push(
+        CompressiveSensingEvaluator::new(seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Compressive Sensing",
+        1.10,
+    );
+
+    // 32. Subagent 11 Innovation: Simplicial Skeleton Reduction [TDA-Mapper-KV]
+    evaluate_and_push(
+        TopologicalSkeletonEvaluator::new(16, seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Topological Data Analysis",
+        1.14,
+    );
+
+    // 33. Subagent 12 Innovation: 4th-Order Yoshida Symplectic Hamiltonian [Symplectic-KV]
+    evaluate_and_push(
+        SymplecticHamiltonianEvaluator::new(16, seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Symplectic Hamiltonian",
+        1.16,
+    );
+
+    // 34. Subagent 13 Innovation: Quantum Density Matrix POVM Attention [Quantum-POVM-KV]
+    evaluate_and_push(
+        QuantumDensityPovmEvaluator::new(6, seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Quantum State Tomography",
+        1.22,
+    );
+
+    // 35. Subagent 14 Innovation: Continuous Attention Graphon Spectral [Graphon-KV]
+    evaluate_and_push(
+        GraphonSpectralEvaluator::new(6, 4, seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Continuous Graphon Limits",
+        1.18,
+    );
+
+    // 36. Subagent 15 Innovation: Differentially Private Lipschitz Sketch [DP-Sketch-KV]
+    evaluate_and_push(
+        DpLipschitzSketchEvaluator::new(4, 64, seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Differential Privacy Sketch",
+        1.15,
+    );
+
     list
 }
 
