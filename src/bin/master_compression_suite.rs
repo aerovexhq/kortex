@@ -549,8 +549,79 @@ fn evaluate_all_methods_for_model(
         1.15,
     );
 
+    // 37. Subagent 16 Innovation: Hyperbolic Poincaré Lorentz Key Compression [Hyp-Poincaré-KV]
+    evaluate_and_push(
+        HyperbolicPoincareEvaluator::new(seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Hyperbolic Geometry",
+        1.25,
+    );
+
+    // 38. Subagent 17 Innovation: Tropical Polytope Max-Plus Bounded Attention [Tropical-KV]
+    evaluate_and_push(
+        TropicalPolytopeEvaluator::new(seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Tropical Geometry",
+        1.20,
+    );
+
+    // 39. Subagent 18 Innovation: Random Matrix Theory Marchenko-Pastur Noise Stripping [RMT-Spike-KV]
+    evaluate_and_push(
+        RmtSpikeFilterEvaluator::new(seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Random Matrix Theory",
+        1.22,
+    );
+
+    // 40. Subagent 19 Innovation: Kähler Holomorphic Complex Differential Form Bundling [Kähler-KV]
+    evaluate_and_push(
+        KahlerHolomorphicEvaluator::new(seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Complex Kähler Manifold",
+        1.24,
+    );
+
+    // 41. Subagent 20 Innovation: Wilsonian Renormalization Group Momentum Decimation [Wilson-RG-KV]
+    evaluate_and_push(
+        WilsonianRgEvaluator::new(seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Renormalization Group",
+        1.21,
+    );
+
+    // 42. Subagent 21 Innovation: Yang-Mills Gauge Connection Curvature Tracking [Yang-Mills-KV]
+    evaluate_and_push(
+        YangMillsBundleEvaluator::new(seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Gauge Theory Bundles",
+        1.23,
+    );
+
+    // 43. Subagent 22 Innovation: Sheaf Dirichlet Harmonic Cohomology Extension [Sheaf-Dirichlet-KV]
+    evaluate_and_push(
+        SheafDirichletEvaluator::new(seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Sheaf Cohomology",
+        1.22,
+    );
+
+    // 44. Subagent 23 Innovation: Stochastic SDE Fokker-Planck & Malliavin Sensitivity [SDE-Malliavin-KV]
+    evaluate_and_push(
+        SdeMalliavinEvaluator::new(seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Stochastic SDEs",
+        1.25,
+    );
+
+    // 45. Subagent 24 Innovation: 2D PEPS & MERA Quantum Tensor Networks [PEPS-MERA-KV]
+    evaluate_and_push(
+        PepsMeraEvaluator::new(seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Quantum PEPS/MERA",
+        1.28,
+    );
+
+    // 46. Subagent 25 Innovation: Ergodic Chaos & Lyapunov Exponent Tracking [Ergodic-Lyapunov-KV]
+    evaluate_and_push(
+        ErgodicLyapunovEvaluator::new(seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Ergodic Chaos Theory",
+        1.21,
+    );
+
     list
 }
+
 
 fn main() -> Result<()> {
     println!("╔═════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗");

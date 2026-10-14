@@ -90,3 +90,16 @@ pub use innovative::symplectic_hamiltonian::*;
 pub use innovative::quantum_density_povm::*;
 pub use innovative::graphon_spectral::*;
 pub use innovative::dp_lipschitz_sketch::*;
+
+// Academic Frontier Evaluators - Wave 3 (Agents 16-25)
+pub use innovative::hyperbolic_poincare::*;
+pub use innovative::tropical_polytope::*;
+pub use innovative::rmt_spike_filter::*;
+pub use innovative::kahler_holomorphic::*;
+pub use innovative::wilsonian_rg::*;
+pub use innovative::yang_mills_bundle::*;
+pub use innovative::sheaf_dirichlet::*;
+pub use innovative::sde_malliavin::*;
+pub use innovative::peps_mera::*;
+pub use innovative::ergodic_lyapunov::*;
+

@@ -39,3 +39,16 @@ pub mod symplectic_hamiltonian;
 pub mod quantum_density_povm;
 pub mod graphon_spectral;
 pub mod dp_lipschitz_sketch;
+
+// Academic Frontier Modules - Wave 3 (Agents 16-25)
+pub mod hyperbolic_poincare;
+pub mod tropical_polytope;
+pub mod rmt_spike_filter;
+pub mod kahler_holomorphic;
+pub mod wilsonian_rg;
+pub mod yang_mills_bundle;
+pub mod sheaf_dirichlet;
+pub mod sde_malliavin;
+pub mod peps_mera;
+pub mod ergodic_lyapunov;
+
