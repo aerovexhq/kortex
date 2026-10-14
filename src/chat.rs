@@ -48,14 +48,6 @@ impl ChatSession {
             runner_prof.evict_chunk
         );
 
-        println!("╭─────────────────────────────────────────────────────────────────────────────╮");
-        print_meta_row("Model:", &file_name, "\x1b[1;36m");
-        print_meta_row("Hash:", &hash[..32], "\x1b[1;33m");
-        print_meta_row("Runner:", runner_prof.runner_type.label(), "\x1b[1;32m");
-        print_meta_row("KV Config:", &kv_config_str, "\x1b[1;35m");
-        print_meta_row("Status:", "[Cached Champion Runner Profile Loaded from Hash Database]", "\x1b[1;32m");
-        println!("╰─────────────────────────────────────────────────────────────────────────────╯");
-
         let precision = match runner_prof.kv_precision.as_str() {
             "Q8_0" => KvPrecision::Q8_0,
             "Q4_0" => KvPrecision::Q4_0,
@@ -74,6 +66,22 @@ impl ChatSession {
             runner_prof.window_size,
             runner_prof.evict_chunk,
         )?;
+
+        let is_adaptive = engine.device_name().contains("+ Host CPU") || engine.device_name().contains("Fallback");
+        let status_str = if is_adaptive {
+            "[VRAM Guard: Adaptive GPU/CPU Layer Offload Active]"
+        } else {
+            "[Cached Champion Runner Profile Loaded from Hash Database]"
+        };
+
+        println!("╭─────────────────────────────────────────────────────────────────────────────╮");
+        print_meta_row("Model:", &file_name, "\x1b[1;36m");
+        print_meta_row("Hash:", &hash[..32], "\x1b[1;33m");
+        print_meta_row("Device:", &engine.device_name(), "\x1b[1;34m");
+        print_meta_row("Runner:", runner_prof.runner_type.label(), "\x1b[1;32m");
+        print_meta_row("KV Config:", &kv_config_str, "\x1b[1;35m");
+        print_meta_row("Status:", status_str, if is_adaptive { "\x1b[1;33m" } else { "\x1b[1;32m" });
+        println!("╰─────────────────────────────────────────────────────────────────────────────╯");
 
         Ok(Self {
             engine,

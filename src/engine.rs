@@ -31,6 +31,8 @@ pub fn silence_llama_logs() {
 pub struct LlamaModelHandle {
     model: *mut llama_cpp_sys_2::llama_model,
     vocab: *const llama_cpp_sys_2::llama_vocab,
+    pub active_gpu_layers: u32,
+    pub device_label: String,
 }
 
 unsafe impl Send for LlamaModelHandle {}
@@ -38,6 +40,10 @@ unsafe impl Sync for LlamaModelHandle {}
 
 impl LlamaModelHandle {
     /// Load a model from file using the provided GPU/offload configuration.
+    ///
+    /// If the requested layer count exceeds GPU device VRAM (e.g. 14B+ models on a 4 GiB GPU),
+    /// this function adaptively tries lower layer counts in descending order
+    /// until model allocation succeeds, falling back to CPU host execution if necessary.
     pub fn load_from_file(
         path: &std::path::Path,
         n_gpu_layers: u32,
@@ -47,38 +53,114 @@ impl LlamaModelHandle {
         use std::ptr;
         use anyhow::{bail, Context};
         use llama_cpp_sys_2::{
-            ggml_backend_dev_get, ggml_backend_dev_t, llama_model_default_params,
-            llama_model_get_vocab, llama_model_load_from_file,
+            ggml_backend_dev_get, ggml_backend_dev_memory, ggml_backend_dev_t,
+            llama_model_default_params, llama_model_get_vocab, llama_model_load_from_file,
         };
 
         let _backend = global_backend();
 
         let mut devices_buf: [ggml_backend_dev_t; 16] = [ptr::null_mut(); 16];
-        unsafe {
-            let mut mparams = llama_model_default_params();
-            mparams.n_gpu_layers = n_gpu_layers as i32;
+        let c_path = CString::new(path.to_str().context("Invalid model path UTF-8")?)?;
 
-            if let Some(dev_idx) = device_index {
+        let mut free_vram: usize = 0;
+        let mut total_vram: usize = 0;
+        if let Some(dev_idx) = device_index {
+            unsafe {
                 let dev = ggml_backend_dev_get(dev_idx);
                 if !dev.is_null() {
-                    devices_buf[0] = dev;
-                    mparams.devices = devices_buf.as_mut_ptr();
+                    ggml_backend_dev_memory(dev, &mut free_vram, &mut total_vram);
+                }
+            }
+        }
+
+        let file_size = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+        let req = n_gpu_layers as i32;
+        let mut candidate_layers = Vec::new();
+
+        // If the model file size exceeds free VRAM, calculate an initial safe ceiling
+        // to avoid unneeded allocation failure logs.
+        let usable_vram = free_vram.saturating_sub(500 * 1024 * 1024);
+        let mut start_layer = req;
+        if free_vram > 0 && file_size as usize > free_vram && device_index.is_some() {
+            let fraction = (usable_vram as f64) / (file_size as f64);
+            let estimated_layers = ((fraction * 48.0).floor() as i32).clamp(4, 32);
+            if estimated_layers < req {
+                start_layer = estimated_layers;
+            }
+        }
+
+        candidate_layers.push(start_layer);
+
+        if device_index.is_some() {
+            for &fallback in &[32, 28, 24, 20, 16, 12, 8, 4, 0] {
+                if fallback < start_layer && !candidate_layers.contains(&fallback) {
+                    candidate_layers.push(fallback);
+                }
+            }
+        } else if !candidate_layers.contains(&0) {
+            candidate_layers.push(0);
+        }
+
+        let mut loaded_model: *mut llama_cpp_sys_2::llama_model = ptr::null_mut();
+        let mut successful_layers = 0;
+
+        unsafe {
+            for &layers in &candidate_layers {
+                let mut mparams = llama_model_default_params();
+                mparams.n_gpu_layers = layers;
+
+                if layers > 0 {
+                    if let Some(dev_idx) = device_index {
+                        let dev = ggml_backend_dev_get(dev_idx);
+                        if !dev.is_null() {
+                            devices_buf[0] = dev;
+                            mparams.devices = devices_buf.as_mut_ptr();
+                        }
+                    }
+                } else {
+                    devices_buf[0] = ptr::null_mut();
+                    mparams.devices = ptr::null_mut();
+                }
+
+                let model = llama_model_load_from_file(c_path.as_ptr(), mparams);
+                if !model.is_null() {
+                    loaded_model = model;
+                    successful_layers = layers;
+                    break;
                 }
             }
 
-            let c_path = CString::new(path.to_str().context("Invalid model path UTF-8")?)?;
-            let model = llama_model_load_from_file(c_path.as_ptr(), mparams);
-            if model.is_null() {
-                bail!("llama_model_load_from_file returned NULL pointer");
+            if loaded_model.is_null() {
+                bail!("Failed to load GGUF model: all GPU layer offload configurations failed");
             }
 
+            let model = loaded_model;
             let vocab = llama_model_get_vocab(model);
             if vocab.is_null() {
                 llama_cpp_sys_2::llama_model_free(model);
                 bail!("llama_model_get_vocab returned NULL vocab pointer");
             }
 
-            Ok(std::sync::Arc::new(Self { model, vocab }))
+            let device_label = if successful_layers > 0 {
+                if let Some(dev_idx) = device_index {
+                    if successful_layers < req {
+                        format!("Vulkan Device [{}] ({} layers) + Host CPU", dev_idx, successful_layers)
+                    } else {
+                        format!("Vulkan Device [{}] via Raw C FFI", dev_idx)
+                    }
+                } else {
+                    "CPU".to_string()
+                }
+            } else {
+                "Host CPU (0 GPU layers - VRAM Fallback)".to_string()
+            };
+
+            Ok(std::sync::Arc::new(Self {
+                model,
+                vocab,
+                active_gpu_layers: successful_layers as u32,
+                device_label,
+            }))
         }
     }
 

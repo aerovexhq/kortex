@@ -1,11 +1,10 @@
-use std::ffi::{c_char, CString};
+use std::ffi::c_char;
 use std::ptr;
-use anyhow::{bail, Context, Result};
+use anyhow::{bail, Result};
 use llama_cpp_sys_2::{
-    ggml_backend_dev_get, ggml_backend_dev_t, llama_batch, llama_batch_free, llama_batch_init,
+    ggml_backend_dev_t, llama_batch, llama_batch_free, llama_batch_init,
     llama_context, llama_context_default_params, llama_decode, llama_free, llama_get_memory, llama_init_from_model, llama_memory_clear, llama_model,
-    llama_model_default_params, llama_model_free,
-    llama_model_get_vocab, llama_model_load_from_file, llama_model_n_embd, llama_model_n_head,
+    llama_model_free, llama_model_n_embd, llama_model_n_head,
     llama_model_n_head_kv, llama_model_n_layer, llama_model_n_params, llama_model_size,
     llama_token, llama_token_to_piece, llama_tokenize, llama_vocab, llama_vocab_is_eog,
 };
@@ -38,86 +37,23 @@ unsafe impl Send for RawFfiEngine {}
 
 impl RawFfiEngine {
     pub fn new(config: EngineConfig) -> Result<Self> {
-        let _backend = crate::engine::global_backend();
-
-        let mut devices_buf = Box::new([ptr::null_mut(); 16]);
-        let mut device_label = "CPU".to_string();
-
-        unsafe {
-            let mut mparams = llama_model_default_params();
-            mparams.n_gpu_layers = config.n_gpu_layers as i32;
-
-            if let Some(dev_idx) = config.device_index {
-                let dev = ggml_backend_dev_get(dev_idx);
-                if !dev.is_null() {
-                    devices_buf[0] = dev;
-                    mparams.devices = devices_buf.as_mut_ptr();
-                    device_label = format!("Vulkan Device [{}] via Raw C FFI", dev_idx);
-                }
-            }
-
-            let c_path = CString::new(
-                config
-                    .model_path
-                    .to_str()
-                    .context("Invalid model path UTF-8")?,
-            )?;
-
-            let model = llama_model_load_from_file(c_path.as_ptr(), mparams);
-            if model.is_null() {
-                bail!("llama_model_load_from_file returned NULL pointer");
-            }
-
-            let mut cparams = llama_context_default_params();
-            cparams.n_ctx = config.ctx_size;
-            cparams.n_batch = 512;
-            cparams.type_k = config.kv_precision.to_ggml_type();
-            cparams.type_v = config.kv_precision.to_ggml_type();
-            if let Some(threads) = config.n_threads {
-                cparams.n_threads = threads;
-            }
-
-            let ctx = llama_init_from_model(model, cparams);
-            if ctx.is_null() {
-                llama_model_free(model);
-                bail!("llama_init_from_model returned NULL context pointer");
-            }
-
-            let vocab = llama_model_get_vocab(model);
-            if vocab.is_null() {
-                llama_free(ctx);
-                llama_model_free(model);
-                bail!("llama_model_get_vocab returned NULL vocab pointer");
-            }
-
-            // Allocate raw C batch buffer (512 tokens, 0 embd, 1 sequence)
-            let batch = llama_batch_init(512, 0, 1);
-
-            Ok(Self {
-                model,
-                ctx,
-                vocab,
-                batch,
-                config,
-                device_label,
-                token_scratch: Vec::with_capacity(1024),
-                _shared_model: None,
-                devices_buf,
-            })
-        }
+        let shared = crate::engine::LlamaModelHandle::load_from_file(
+            &config.model_path,
+            config.n_gpu_layers,
+            config.device_index,
+        )?;
+        Self::from_shared_model(shared, config)
     }
 
     /// Construct a lightweight execution context attached to an existing shared model.
     pub fn from_shared_model(
         shared: std::sync::Arc<crate::engine::LlamaModelHandle>,
-        config: EngineConfig,
+        mut config: EngineConfig,
     ) -> Result<Self> {
         let _backend = crate::engine::global_backend();
         let devices_buf = Box::new([ptr::null_mut(); 16]);
-        let device_label = match config.device_index {
-            Some(idx) => format!("Vulkan Device [{}] via Raw C FFI (Shared Model)", idx),
-            None => "CPU (Shared Model)".to_string(),
-        };
+        let device_label = shared.device_label.clone();
+        config.n_gpu_layers = shared.active_gpu_layers;
 
         unsafe {
             let mut cparams = llama_context_default_params();
