@@ -27,6 +27,8 @@ pub mod innovative;
 
 pub use metrics::*;
 pub use standard::zero_copy::*;
+pub use standard::radix_trie::*;
+pub use standard::lossless_delta::*;
 pub use standard::heavy_hitter::*;
 pub use standard::token_merge::*;
 pub use standard::cross_layer::*;
@@ -44,3 +46,8 @@ pub use innovative::ada_svd::*;
 pub use innovative::hybrid_svd_q::*;
 pub use innovative::wavelet_kv::*;
 pub use innovative::knot_spline::*;
+pub use innovative::hyper_knot::*;
+pub use innovative::turbo_ada_svd::*;
+pub use innovative::symlet_wavelet::*;
+pub use innovative::residual_entanglement_v2::*;
+pub use innovative::spherical_geo::*;

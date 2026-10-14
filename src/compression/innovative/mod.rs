@@ -13,3 +13,8 @@ pub mod ada_svd;
 pub mod hybrid_svd_q;
 pub mod wavelet_kv;
 pub mod knot_spline;
+pub mod hyper_knot;
+pub mod turbo_ada_svd;
+pub mod symlet_wavelet;
+pub mod residual_entanglement_v2;
+pub mod spherical_geo;

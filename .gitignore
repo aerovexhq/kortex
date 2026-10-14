@@ -4,6 +4,7 @@ target/
 
 # GGUF Model weights and Large Binaries
 models/
+models
 *.gguf
 *.bin
 *.pt

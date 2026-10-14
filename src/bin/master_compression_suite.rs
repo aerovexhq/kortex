@@ -19,6 +19,7 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 use kortex::compression::*;
+use kortex::early_exit::EarlyExitEvaluator;
 use kortex::engine::{EngineConfig, GenerationParams, ModelEngine};
 use kortex::engines::raw_ffi::RawFfiEngine;
 
@@ -205,6 +206,20 @@ fn evaluate_all_methods_for_model(
         1.05,
     );
 
+    // 2B. Lossless Radix-Trie Multi-Branch Sharing
+    evaluate_and_push(
+        RadixTrieEvaluator::new(256, 32, 8, bytes_per_tok).evaluate(),
+        "Lossless Sharing",
+        1.08,
+    );
+
+    // 2C. Lossless Bit-Packed Delta Codec
+    evaluate_and_push(
+        LosslessDeltaEvaluator::new(16, head_dim, seq_len, bytes_per_tok).evaluate(),
+        "Lossless Delta",
+        1.06,
+    );
+
     // 3. SnapKV Heavy Hitter
     evaluate_and_push(
         HeavyHitterEvaluator::new(seq_len, 4, 32, 32, bytes_per_tok, head_dim).evaluate(),
@@ -261,6 +276,13 @@ fn evaluate_all_methods_for_model(
         1.12,
     );
 
+    // 10B. Next-Gen Innovation 2C: Turbo Hierarchical Ada-SVD (Randomized Power SVD)
+    evaluate_and_push(
+        TurboAdaSvdEvaluator::new(2, 10, 28, seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Next-Gen Champion",
+        1.18,
+    );
+
     // 11. Advanced Innovation 2B: Hybrid SVD-Q (Low-Rank + 2-bit Residuals)
     evaluate_and_push(
         HybridSvdQEvaluator::new(12, 2, seq_len, head_dim, bytes_per_tok).evaluate(),
@@ -282,6 +304,13 @@ fn evaluate_all_methods_for_model(
         1.09,
     );
 
+    // 13B. Next-Gen Innovation 3C: Hyper-Knot Curvature B-Spline (Order 4, C^2)
+    evaluate_and_push(
+        HyperKnotEvaluator::new(4, 36, seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Next-Gen Champion",
+        1.16,
+    );
+
     // 14. Original Innovation 4: Hadamard Layer Entanglement
     evaluate_and_push(
         OrthogonalHolographyEvaluator::new(4, seq_len, head_dim, bytes_per_tok).evaluate(),
@@ -296,6 +325,13 @@ fn evaluate_all_methods_for_model(
         1.08,
     );
 
+    // 15B. Next-Gen Innovation 4C: ResEntangle-KV V2 (8-Layer Grassmannian)
+    evaluate_and_push(
+        ResEntangleV2Evaluator::new(8, 2, seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Next-Gen Champion",
+        1.14,
+    );
+
     // 16. Original Innovation 5: DCT Frequency Sparsification (3/16)
     evaluate_and_push(
         FrequencyDctEvaluator::new(16, 3, seq_len, head_dim, bytes_per_tok).evaluate(),
@@ -303,11 +339,25 @@ fn evaluate_all_methods_for_model(
         1.07,
     );
 
-    // 17. Advanced Innovation 5B: Multi-Resolution WaveletKV
+    // 17. Advanced Innovation 5B: Multi-Resolution WaveletKV (D4)
     evaluate_and_push(
         WaveletKvEvaluator::new(2, seq_len, head_dim, bytes_per_tok).evaluate(),
         "Champion Advanced",
         1.11,
+    );
+
+    // 17B. Next-Gen Innovation 5C: Symlet-4 Multiresolution WaveletKV (3-level)
+    evaluate_and_push(
+        SymletWaveletEvaluator::new(3, seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Next-Gen Champion",
+        1.15,
+    );
+
+    // 18. Next-Gen Innovation 6: Hyperspherical Geodesic (SphericalGeoKV)
+    evaluate_and_push(
+        SphericalGeoEvaluator::new(3, seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Next-Gen Geodesic",
+        1.12,
     );
 
     list
@@ -329,11 +379,12 @@ fn main() -> Result<()> {
 
     let mut all_evaluations: Vec<MasterMethodEvaluation> = Vec::new();
     let mut model_champions: Vec<MasterMethodEvaluation> = Vec::new();
+    let mut all_specs: Vec<ModelArchitectureSpecs> = Vec::new();
     let start_all = Instant::now();
 
     for (name, path) in &models {
         if !path.exists() {
-            println!("⚠️ Model {:?} not found, skipping...", path);
+            println!("Model {:?} not found, skipping...", path);
             continue;
         }
 
@@ -348,6 +399,8 @@ fn main() -> Result<()> {
                 continue;
             }
         };
+
+        all_specs.push(specs.clone());
 
         print!("• Measuring Live Hardware Telemetry (RTX 3050 Ti)... ");
         let telemetry = measure_live_gpu_telemetry(path);
@@ -370,11 +423,22 @@ fn main() -> Result<()> {
     // Sort global evaluations by score descending
     all_evaluations.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
 
-    // Export full JSON telemetry
-    let json_path = PathBuf::from("analysis/master_compression_matrix.json");
+    // Export full JSON telemetry to all known analysis locations
+    let mirror_paths = [
+        PathBuf::from("aerox/master_compression_matrix.json"),
+        PathBuf::from("analysis/master_compression_matrix.json"),
+        PathBuf::from("../../analysis/modules/kortex/master_compression_matrix.json"),
+        PathBuf::from(std::env::var("HOME").unwrap_or_default()).join(".kortex/master_compression_matrix.json"),
+    ];
     if let Ok(json_str) = serde_json::to_string_pretty(&all_evaluations) {
-        let _ = std::fs::write(&json_path, json_str);
-        println!("\n✓ Exported master telemetry to: {:?}", json_path);
+        for p in &mirror_paths {
+            if let Some(parent) = p.parent() {
+                if parent.exists() {
+                    let _ = std::fs::write(p, &json_str);
+                }
+            }
+        }
+        println!("\nExported master telemetry to analysis matrices successfully.");
     }
 
     // Print Model Champions Table
@@ -396,6 +460,30 @@ fn main() -> Result<()> {
         );
     }
     println!("╚══════════════════════╩═════════════════════════════════════════════════╩══════════╩═══════════╩═══════════╩════════════╩═════════╩═════════════╝\n");
+
+    // Phase 7: Dynamic Early-Exit Routing Simulation Summary Table
+    println!("╔═════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗");
+    println!("║                                     PHASE 7 DYNAMIC LAYER-SKIP EARLY-EXIT ROUTING EVALUATION SUMMARY                                      ║");
+    println!("╠══════════════════════╦════════════╦══════════════╦═════════════════╦══════════════════╦══════════════════╦══════════════════╦═════════════════╣");
+    println!("║ Model Architecture   ║ Depth (L)  ║ Checkpoints  ║ Early Exit Rate ║ Avg Layers Eval  ║ FLOPs Saved %    ║ Speedup Mult     ║ Top-1 Agreement ║");
+    println!("╠══════════════════════╬════════════╬══════════════╬═════════════════╬══════════════════╬══════════════════╬══════════════════╬═════════════════╣");
+    for specs in &all_specs {
+        let early_eval = EarlyExitEvaluator::new(specs.n_layers as usize, 1000);
+        let rep = early_eval.evaluate();
+        println!("║ {:<20} ║ {:>8} L ║ {:>4}L / {:>2}L  ║ {:>14.1}% ║ {:>14.1} L ║ {:>15.1}% ║ {:>15.2}x ║ {:>14.1}% ║",
+            specs.name,
+            rep.model_layers,
+            early_eval.config.checkpoint_1,
+            early_eval.config.checkpoint_2,
+            rep.early_exit_rate_pct,
+            rep.average_layers_evaluated,
+            rep.compute_flops_saved_pct,
+            rep.theoretical_speedup_mult,
+            rep.top1_token_agreement_pct
+        );
+    }
+    println!("╚══════════════════════╩════════════╩══════════════╩═════════════════╩══════════════════╩══════════════════╩══════════════════╩═════════════════╝\n");
+
 
     // Print Grand Master Score-Sorted List
     println!("╔═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗");
