@@ -635,6 +635,10 @@ fn main() -> Result<()> {
         ("Qwen 2.5 1.5B", PathBuf::from("models/qwen2.5-1.5b-instruct-q4_k_m.gguf")),
         ("Qwen 2.5 3B", PathBuf::from("models/qwen2.5-3b-instruct-q4_k_m.gguf")),
         ("Qwen 2.5 7B", PathBuf::from("models/qwen2.5-7b-instruct-q2_k.gguf")),
+        ("Meta Llama 3.1 8B", PathBuf::from("models/llama-3.1-8b-instruct-q2_k.gguf")),
+        ("Qwen 2.5 14B", PathBuf::from("models/qwen2.5-14b-instruct-q2_k.gguf")),
+        ("Gemma 2 9B", PathBuf::from("models/gemma-2-9b-it-q4_k_m.gguf")),
+        ("Qwen 2.5 32B", PathBuf::from("models/qwen2.5-32b-instruct-q2_k.gguf")),
     ];
 
     let mut all_evaluations: Vec<MasterMethodEvaluation> = Vec::new();
