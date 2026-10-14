@@ -3,6 +3,8 @@
 //! Encompasses:
 //! 1. Standard / Near-lossless methods:
 //!    - Zero-Copy Prefix Sharing & Deduplication (llama_memory_seq_cp)
+//!    - Radix-Trie Multi-Branch Lossless Sharing (Deep, Standard, Shallow)
+//!    - Bit-Packed Lossless Delta Codec (Bitplane, RLE-Golomb)
 //!    - SnapKV / Heavy Hitter Oracle (H2O)
 //!    - Vector-Cosine Token Merging (ToMe-KV)
 //!    - Cross-Layer Interleaved KV Sharing
@@ -14,12 +16,22 @@
 //!    - Innovation 2: Streaming SVD Rank Collapse (Dynamic Holographic Memory)
 //!    - Innovation 2A: Ada-SVD (Entropy-Adaptive Rank Collapse)
 //!    - Innovation 2B: Hybrid SVD-Q (Low-Rank SVD Core + 2-bit Quantized Residuals)
+//!    - Innovation 2C: Turbo Hierarchical Ada-SVD (Extreme, Balanced, Precision)
 //!    - Innovation 3: Polynomial Chebyshev Spline Memory (KV Curve Fitting)
 //!    - Innovation 3B: Knot-Adaptive B-Spline Memory (KnotKV)
+//!    - Innovation 3C: Hyper-Knot B-Spline (Aggressive, Balanced, Precision)
 //!    - Innovation 4: Walsh-Hadamard Orthogonal Layer Entanglement
 //!    - Innovation 4B: Cross-Layer Residual Low-Rank Entanglement (ResEntangle-KV)
+//!    - Innovation 4C: ResEntangle-KV V2 (8-Layer Grassmannian Subspace)
 //!    - Innovation 5: Discrete Cosine Transform (DCT) Frequency Sparsification
-//!    - Innovation 5B: Multi-Resolution Wavelet Packet Decomposition (WaveletKV)
+//!    - Innovation 5B: Multi-Resolution Wavelet Packet Decomposition (WaveletKV - D4)
+//!    - Innovation 5C: Symlet-4 Multiresolution WaveletKV
+//!    - Innovation 5D: Coiflet-2 Multiresolution WaveletKV (Dual Vanishing Moments)
+//!    - Innovation 5E: Biorthogonal CDF 9/7 WaveletKV (Linear Phase)
+//!    - Innovation 6: Hyperspherical Geodesic Quantization (SphericalGeoKV)
+//!    - Innovation 7: Grassmannian Geodesic Flow (GGF-KV)
+//!    - Innovation 8: Normalizing Flow Vector Quantization (NF-VQ-KV)
+//!    - Innovation 9: State-Space Model HiPPO Key Projection (SSM-HiPPO-KV)
 
 pub mod metrics;
 pub mod standard;
@@ -49,5 +61,10 @@ pub use innovative::knot_spline::*;
 pub use innovative::hyper_knot::*;
 pub use innovative::turbo_ada_svd::*;
 pub use innovative::symlet_wavelet::*;
+pub use innovative::coiflet_wavelet::*;
+pub use innovative::biorthogonal_wavelet::*;
 pub use innovative::residual_entanglement_v2::*;
 pub use innovative::spherical_geo::*;
+pub use innovative::grassmannian_flow::*;
+pub use innovative::normalizing_flow_vq::*;
+pub use innovative::ssm_hippo::*;

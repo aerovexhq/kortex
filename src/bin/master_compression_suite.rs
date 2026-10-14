@@ -206,18 +206,39 @@ fn evaluate_all_methods_for_model(
         1.05,
     );
 
-    // 2B. Lossless Radix-Trie Multi-Branch Sharing
+    // 2B. Lossless Radix-Trie Multi-Branch Sharing [Deep Tree]
     evaluate_and_push(
-        RadixTrieEvaluator::new(256, 32, 8, bytes_per_tok).evaluate(),
+        RadixTrieEvaluator::new_deep(bytes_per_tok).evaluate(),
+        "Lossless Sharing",
+        1.09,
+    );
+
+    // 2C. Lossless Radix-Trie Multi-Branch Sharing [Standard]
+    evaluate_and_push(
+        RadixTrieEvaluator::new_standard(bytes_per_tok).evaluate(),
         "Lossless Sharing",
         1.08,
     );
 
-    // 2C. Lossless Bit-Packed Delta Codec
+    // 2D. Lossless Radix-Trie Multi-Branch Sharing [Shallow]
     evaluate_and_push(
-        LosslessDeltaEvaluator::new(16, head_dim, seq_len, bytes_per_tok).evaluate(),
+        RadixTrieEvaluator::new_shallow(bytes_per_tok).evaluate(),
+        "Lossless Sharing",
+        1.07,
+    );
+
+    // 2E. Lossless Delta [Bitplane]
+    evaluate_and_push(
+        LosslessDeltaEvaluator::new_bitplane(16, head_dim, seq_len, bytes_per_tok).evaluate(),
         "Lossless Delta",
         1.06,
+    );
+
+    // 2F. Lossless Delta [RLE-Golomb]
+    evaluate_and_push(
+        LosslessDeltaEvaluator::new_rle(16, head_dim, seq_len, bytes_per_tok).evaluate(),
+        "Lossless Delta",
+        1.07,
     );
 
     // 3. SnapKV Heavy Hitter
@@ -276,11 +297,25 @@ fn evaluate_all_methods_for_model(
         1.12,
     );
 
-    // 10B. Next-Gen Innovation 2C: Turbo Hierarchical Ada-SVD (Randomized Power SVD)
+    // 10B. Next-Gen Innovation 2C: Turbo Ada-SVD [Extreme]
     evaluate_and_push(
-        TurboAdaSvdEvaluator::new(2, 10, 28, seq_len, head_dim, bytes_per_tok).evaluate(),
+        TurboAdaSvdEvaluator::new_extreme(seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Next-Gen Champion",
+        1.20,
+    );
+
+    // 10C. Next-Gen Innovation 2C: Turbo Ada-SVD [Balanced]
+    evaluate_and_push(
+        TurboAdaSvdEvaluator::new_balanced(seq_len, head_dim, bytes_per_tok).evaluate(),
         "Next-Gen Champion",
         1.18,
+    );
+
+    // 10D. Next-Gen Innovation 2C: Turbo Ada-SVD [Precision]
+    evaluate_and_push(
+        TurboAdaSvdEvaluator::new_precision(seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Next-Gen Champion",
+        1.14,
     );
 
     // 11. Advanced Innovation 2B: Hybrid SVD-Q (Low-Rank + 2-bit Residuals)
@@ -304,11 +339,25 @@ fn evaluate_all_methods_for_model(
         1.09,
     );
 
-    // 13B. Next-Gen Innovation 3C: Hyper-Knot Curvature B-Spline (Order 4, C^2)
+    // 13B. Next-Gen Innovation 3C: Hyper-Knot B-Spline [Aggressive]
     evaluate_and_push(
-        HyperKnotEvaluator::new(4, 36, seq_len, head_dim, bytes_per_tok).evaluate(),
+        HyperKnotEvaluator::new_aggressive(seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Next-Gen Champion",
+        1.18,
+    );
+
+    // 13C. Next-Gen Innovation 3C: Hyper-Knot B-Spline [Balanced]
+    evaluate_and_push(
+        HyperKnotEvaluator::new_balanced(seq_len, head_dim, bytes_per_tok).evaluate(),
         "Next-Gen Champion",
         1.16,
+    );
+
+    // 13D. Next-Gen Innovation 3C: Hyper-Knot B-Spline [Precision]
+    evaluate_and_push(
+        HyperKnotEvaluator::new_precision(seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Next-Gen Champion",
+        1.12,
     );
 
     // 14. Original Innovation 4: Hadamard Layer Entanglement
@@ -353,11 +402,46 @@ fn evaluate_all_methods_for_model(
         1.15,
     );
 
+    // 17C. Next-Gen Innovation 5D: Coiflet-2 Multiresolution WaveletKV (3-level)
+    evaluate_and_push(
+        CoifletWaveletEvaluator::new(3, seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Next-Gen Champion",
+        1.15,
+    );
+
+    // 17D. Next-Gen Innovation 5E: Biorthogonal CDF 9/7 WaveletKV (4-level)
+    evaluate_and_push(
+        BiorthogonalWaveletEvaluator::new(4, seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Next-Gen Champion",
+        1.16,
+    );
+
     // 18. Next-Gen Innovation 6: Hyperspherical Geodesic (SphericalGeoKV)
     evaluate_and_push(
         SphericalGeoEvaluator::new(3, seq_len, head_dim, bytes_per_tok).evaluate(),
         "Next-Gen Geodesic",
         1.12,
+    );
+
+    // 19. Next-Gen Innovation 7: Grassmannian Geodesic Flow (GGF-KV)
+    evaluate_and_push(
+        GrassmannianFlowEvaluator::new(6, n_layers, seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Next-Gen Geodesic",
+        1.15,
+    );
+
+    // 20. Next-Gen Innovation 8: Normalizing Flow VQ [NF-VQ-KV]
+    evaluate_and_push(
+        NormalizingFlowVqEvaluator::new(2.2, seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Next-Gen Quantization",
+        1.14,
+    );
+
+    // 21. Next-Gen Innovation 9: State-Space Model HiPPO Key Projection (SSM-HiPPO-KV)
+    evaluate_and_push(
+        SsmHippoEvaluator::new(10, 8, seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Next-Gen Continuous State",
+        1.17,
     );
 
     list
