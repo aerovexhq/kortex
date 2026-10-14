@@ -7,3 +7,4 @@ pub mod heavy_hitter;
 pub mod token_merge;
 pub mod cross_layer;
 pub mod residual_codec;
+pub mod rans_codec;

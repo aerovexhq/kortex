@@ -23,3 +23,7 @@ pub mod spherical_geo;
 pub mod grassmannian_flow;
 pub mod normalizing_flow_vq;
 pub mod ssm_hippo;
+pub mod lie_group_rope;
+pub mod sinkhorn_wasserstein;
+pub mod spectral_koopman;
+pub mod pyramid_razor;

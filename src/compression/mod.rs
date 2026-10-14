@@ -5,14 +5,16 @@
 //!    - Zero-Copy Prefix Sharing & Deduplication (llama_memory_seq_cp)
 //!    - Radix-Trie Multi-Branch Lossless Sharing (Deep, Standard, Shallow)
 //!    - Bit-Packed Lossless Delta Codec (Bitplane, RLE-Golomb)
+//!    - Streaming rANS Lossless Codec (Laplace delta modeling)
 //!    - SnapKV / Heavy Hitter Oracle (H2O)
-//!    - Vector-Cosine Token Merging (ToMe-KV)
+//!    - Token Merging (ToMe-KV)
 //!    - Cross-Layer Interleaved KV Sharing
 //!    - Temporal Delta-Residual Prediction Codec
 //!
 //! 2. Creative & Evolved Boundary-Pushing Methods:
 //!    - Innovation 1: Temporal RoPE Harmonic Superposition Folding
 //!    - Innovation 1B: CDMA Orthogonal Phase Division Multiplexing (OPDM-KV)
+//!    - Innovation 1C: Lie Group Matrix Exponential (LieRE-KV in so(d))
 //!    - Innovation 2: Streaming SVD Rank Collapse (Dynamic Holographic Memory)
 //!    - Innovation 2A: Ada-SVD (Entropy-Adaptive Rank Collapse)
 //!    - Innovation 2B: Hybrid SVD-Q (Low-Rank SVD Core + 2-bit Quantized Residuals)
@@ -32,6 +34,9 @@
 //!    - Innovation 7: Grassmannian Geodesic Flow (GGF-KV)
 //!    - Innovation 8: Normalizing Flow Vector Quantization (NF-VQ-KV)
 //!    - Innovation 9: State-Space Model HiPPO Key Projection (SSM-HiPPO-KV)
+//!    - Innovation 10: Sinkhorn-Wasserstein Barycentric KV with E8 Lattice
+//!    - Innovation 11: Spectral Koopman Operator (Echo-KV)
+//!    - Innovation 12: PyramidKV + RazorAttention Compensation
 
 pub mod metrics;
 pub mod standard;
@@ -41,6 +46,7 @@ pub use metrics::*;
 pub use standard::zero_copy::*;
 pub use standard::radix_trie::*;
 pub use standard::lossless_delta::*;
+pub use standard::rans_codec::*;
 pub use standard::heavy_hitter::*;
 pub use standard::token_merge::*;
 pub use standard::cross_layer::*;
@@ -68,3 +74,7 @@ pub use innovative::spherical_geo::*;
 pub use innovative::grassmannian_flow::*;
 pub use innovative::normalizing_flow_vq::*;
 pub use innovative::ssm_hippo::*;
+pub use innovative::lie_group_rope::*;
+pub use innovative::sinkhorn_wasserstein::*;
+pub use innovative::spectral_koopman::*;
+pub use innovative::pyramid_razor::*;

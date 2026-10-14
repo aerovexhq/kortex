@@ -444,6 +444,41 @@ fn evaluate_all_methods_for_model(
         1.17,
     );
 
+    // 22. Subagent 1 Innovation: Lie Group Matrix Exponential (LieRE-KV in so(d))
+    evaluate_and_push(
+        LieGroupRopeEvaluator::new(seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Next-Gen Lie Group",
+        1.16,
+    );
+
+    // 23. Subagent 2 Innovation: Sinkhorn-Wasserstein Barycentric KV with E8 Lattice
+    evaluate_and_push(
+        SinkhornWassersteinEvaluator::new(24, seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Next-Gen Optimal Transport",
+        1.15,
+    );
+
+    // 24. Subagent 3 Innovation: Koopman Operator Spectral KV (Echo-KV)
+    evaluate_and_push(
+        SpectralKoopmanEvaluator::new(8, seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Next-Gen Spectral",
+        1.17,
+    );
+
+    // 25. Subagent 4 Innovation: PyramidKV + RazorAttention Compensation
+    evaluate_and_push(
+        PyramidRazorEvaluator::new(48, 4, seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Next-Gen Dynamic Sparsity",
+        1.14,
+    );
+
+    // 26. Subagent 5 Innovation: Lossless Streaming rANS Codec
+    evaluate_and_push(
+        RAnsDeltaEvaluator::new(seq_len, head_dim, bytes_per_tok).evaluate(),
+        "Lossless Entropy Codec",
+        1.08,
+    );
+
     list
 }
 
