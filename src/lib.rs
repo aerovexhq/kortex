@@ -4,6 +4,7 @@ pub mod avionics_bridge;
 pub mod benchmark;
 pub mod chat;
 pub mod compression;
+pub mod compressive_sensing;
 pub mod dlpack_shm;
 pub mod early_exit;
 pub mod engine;
@@ -35,6 +36,11 @@ pub use avionics_bridge::{
     RolloutSafetyConfig, SononAcousticLogitFrame, SononLogitRingBuffer, WatchdogState,
 };
 pub use benchmark::{BenchmarkReport, TokenSpeedCalculator};
+pub use compressive_sensing::{
+    CompressiveConfig, CompressiveKeyCache, CompressiveSensingEvaluator, CompressiveSensingReport,
+    DctDictionary, DeterministicChirpOperator, FastCholeskyOmpSolver, CHIRP_PRIME,
+    DEFAULT_HEAD_DIM, DEFAULT_MAX_SPARSITY, DEFAULT_MEASURE_DIM,
+};
 pub use dlpack_shm::{
     DlDataType, DlDataTypeCode, DlDevice, DlDeviceType, DlPackShmEvaluator, DlPackShmReport,
     DlTensorDescriptor, PosixShmRing, ShmError, ShmSlot, MAX_TENSOR_DIMS,

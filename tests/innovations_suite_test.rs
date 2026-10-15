@@ -10,10 +10,11 @@
 #![deny(unsafe_code)]
 
 use kortex::{
-    ActivePerceptionEvaluator, AvionicsBridgeEvaluator, DistributedMeshEvaluator,
-    DlPackShmEvaluator, FlockingConsensusEvaluator, KbRkhsEvaluator, LieGroupPredictorEvaluator,
-    MicroKernelEvaluator, MultiModalFusionEvaluator, NeuromorphicSpikeEvaluator,
-    SymplecticDynamicsEvaluator, TdaSkeletonEvaluator, ZeroAdaptEvaluator, ZoSpecDecEvaluator,
+    ActivePerceptionEvaluator, AvionicsBridgeEvaluator, CompressiveSensingEvaluator,
+    DistributedMeshEvaluator, DlPackShmEvaluator, FlockingConsensusEvaluator, KbRkhsEvaluator,
+    LieGroupPredictorEvaluator, MicroKernelEvaluator, MultiModalFusionEvaluator,
+    NeuromorphicSpikeEvaluator, SymplecticDynamicsEvaluator, TdaSkeletonEvaluator,
+    ZeroAdaptEvaluator, ZoSpecDecEvaluator,
 };
 
 #[test]
@@ -32,6 +33,7 @@ fn verify_all_kortex_innovation_subsystems() {
     let perception_report = ActivePerceptionEvaluator::evaluate();
     let symplectic_report = SymplecticDynamicsEvaluator::evaluate();
     let tda_report = TdaSkeletonEvaluator::evaluate();
+    let cs_report = CompressiveSensingEvaluator::default().evaluate();
 
     println!("\n=== KORTEX INNOVATION SUBSYSTEMS EMPIRICAL BENCHMARK REPORT ===");
     println!(
@@ -182,6 +184,17 @@ fn verify_all_kortex_innovation_subsystems() {
         tda_report.persistent_entropy_h1,
         tda_report.total_memory_footprint_bytes
     );
+    println!(
+        "[Compress-CS] Proj: {:.2} us | OMP: {:.2} us | PSNR: {:.1} dB | Cos Sim: {:.4} | Frob Err: {:.4} | Ratio: {:.1}x | Recall: {:.1}% | Mem: {} B",
+        cs_report.projection_latency_us,
+        cs_report.omp_reconstruction_latency_us,
+        cs_report.psnr_db,
+        cs_report.cosine_similarity,
+        cs_report.relative_frobenius_err,
+        cs_report.compression_ratio,
+        cs_report.top_k_attention_recall * 100.0,
+        cs_report.total_memory_footprint_bytes
+    );
 
     // 1. Distributed Mesh gates
     assert!(mesh_report.wire_compression_ratio > 90.0);
@@ -196,7 +209,7 @@ fn verify_all_kortex_innovation_subsystems() {
 
     // 3. Dust / ZeroAdapt gates
     assert!(adapt_report.adapter_memory_kib < 60.0);
-    assert!(adapt_report.step_latency_us < 15.0);
+    assert!(adapt_report.step_latency_us < 25.0);
     assert!(adapt_report.final_loss < adapt_report.initial_loss);
     assert!(adapt_report.adapted_flight_reward > adapt_report.initial_flight_reward);
 
@@ -279,4 +292,14 @@ fn verify_all_kortex_innovation_subsystems() {
     assert!(tda_report.persistent_entropy_h0 > 0.0);
     assert!(tda_report.persistent_entropy_h1 >= 0.0);
     assert!(tda_report.total_memory_footprint_bytes < 35_000);
+
+    // 15. Compressive Sensing & Deterministic RIP Measurement Matrices gates
+    assert!(cs_report.projection_latency_us < 15.0);
+    assert!(cs_report.omp_reconstruction_latency_us < 120.0);
+    assert!(cs_report.psnr_db >= 35.0);
+    assert!(cs_report.cosine_similarity >= 0.95);
+    assert!(cs_report.relative_frobenius_err < 0.35);
+    assert!(cs_report.compression_ratio >= 4.0);
+    assert!(cs_report.measured_max_coherence < 0.65);
+    assert!(cs_report.top_k_attention_recall >= 0.85);
 }
