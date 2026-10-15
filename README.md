@@ -1,6 +1,6 @@
 # Kortex (`kortex`)
 
-**Hardware-Accelerated Edge LLM Inference Kernel, Bounded $O(1)$ Attention Streaming, Mathematical KV-Cache Compression & Cryptographic Model Auto-Tuning in Rust**
+**Multi-Purpose Deep Learning Engine in Rust: Non-Backpropagation Training (Dust Virtual Populations) & Hardware-Accelerated Edge Inference**
 
 [![Ecosystem](https://img.shields.io/badge/Ecosystem-Larvance%20%2F%20Aerovex-0ea5e9?style=flat-square)](https://github.com/larvance)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
@@ -11,9 +11,10 @@
 
 ## Overview
 
-**Kortex** is a hardened, ultra-low-latency edge Large Language Model (LLM) and Small Language Model (SLM) inference runtime engineered in pure native Rust with low-level C-ABI Vulkan GPU acceleration.
+**Kortex** is an enterprise-grade multi-purpose deep learning engine engineered in pure safe Rust (`#![deny(unsafe_code)]`) with low-level C-ABI Vulkan GPU acceleration. Kortex bridges two foundational frontiers of modern deep tech:
 
-Designed specifically for resource-constrained hardware—such as autonomous robotics companion computers (NVIDIA Jetson, Raspberry Pi), edge edge-nodes, and laptops with limited VRAM (e.g., 4GB RTX 3050 Ti)—Kortex eliminates out-of-memory context cliffs, dramatically reduces KV-cache memory footprints through 17 mathematical compression paradigms, and provides an Ollama-style interactive terminal REPL with sub-millisecond token streaming.
+1. **Full-Cycle Non-Backpropagation Training**: Powered by Q Labs' Dust zeroth-order activation-space virtual populations, Kortex trains multi-layer networks and adapts flight policies forward-only without reverse-mode automatic differentiation tapes, completely eliminating autograd VRAM cliffs.
+2. **Hardware-Accelerated Edge Inference**: Engineered for resource-constrained hardware (NVIDIA Jetson, laptops with 4GB VRAM like RTX 3050 Ti), Kortex provides bounded $O(1)$ attention sink streaming, 17 mathematical KV-cache compression paradigms, and an Ollama-style interactive terminal REPL with sub-millisecond token streaming.
 
 ```
  ╔═══════════════════════════════════════════════════════════════════════════╗

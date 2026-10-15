@@ -11,7 +11,7 @@
 
 use kortex::{
     ActivePerceptionEvaluator, AvionicsBridgeEvaluator, CompressiveSensingEvaluator,
-    DistributedMeshEvaluator, DlPackShmEvaluator, FlockingConsensusEvaluator,
+    DistributedMeshEvaluator, DlPackShmEvaluator, DustTrainingEvaluator, FlockingConsensusEvaluator,
     GraphonAttentionEvaluator, HyperbolicEvaluator, KahlerEvaluator, KbRkhsEvaluator,
     LieGroupPredictorEvaluator, MicroKernelEvaluator, MultiModalFusionEvaluator,
     NeuromorphicSpikeEvaluator, PrivacySketchesEvaluator, QuantumDensityEvaluator,
@@ -44,6 +44,7 @@ fn verify_all_kortex_innovation_subsystems() {
     let rmt_report = RmtEvaluator::default().evaluate_performance();
     let kahler_report = KahlerEvaluator::run_full_evaluation();
     let rg_report = RgEvaluator::run_full_evaluation();
+    let dust_train_report = DustTrainingEvaluator::default().evaluate();
 
     println!("\n=== KORTEX INNOVATION SUBSYSTEMS EMPIRICAL BENCHMARK REPORT ===");
     println!(
@@ -292,6 +293,17 @@ fn verify_all_kortex_innovation_subsystems() {
         rg_report.query_latency_us,
         rg_report.total_memory_footprint_bytes
     );
+    println!(
+        "[Dust-Training] Layers: {} | Params: {} | Loss: {:.4} -> {:.4} ({:.1}% red) | Grad Cos: {:.4} | Latency: {:.2} us | Mem: {:.2} KiB",
+        dust_train_report.num_layers,
+        dust_train_report.total_parameters,
+        dust_train_report.initial_loss,
+        dust_train_report.final_loss,
+        dust_train_report.loss_reduction_pct,
+        dust_train_report.mean_gradient_cosine_similarity,
+        dust_train_report.step_latency_us,
+        dust_train_report.memory_footprint_kib
+    );
 
     // 1. Distributed Mesh gates
     assert!(mesh_report.wire_compression_ratio > 90.0);
@@ -480,4 +492,12 @@ fn verify_all_kortex_innovation_subsystems() {
     assert!(rg_report.attention_recall >= 0.95);
     assert!(rg_report.rsmi_bound_max > 0.0);
     assert!(rg_report.total_memory_footprint_bytes < 60_000);
+
+    // 24. Dust Zeroth-Order Full-Cycle Non-Backprop Training gates
+    assert_eq!(dust_train_report.num_layers, 2);
+    assert!(dust_train_report.loss_reduction_pct > 30.0);
+    assert!(dust_train_report.final_loss < dust_train_report.initial_loss);
+    assert!(dust_train_report.mean_gradient_cosine_similarity > 0.40);
+    assert!(dust_train_report.step_latency_us < 350.0);
+    assert!(dust_train_report.memory_footprint_kib < 120.0);
 }

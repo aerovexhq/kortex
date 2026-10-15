@@ -6,6 +6,7 @@ pub mod chat;
 pub mod compression;
 pub mod compressive_sensing;
 pub mod dlpack_shm;
+pub mod dust_trainer;
 pub mod early_exit;
 pub mod engine;
 pub mod engines;
@@ -52,6 +53,10 @@ pub use compressive_sensing::{
 pub use dlpack_shm::{
     DlDataType, DlDataTypeCode, DlDevice, DlDeviceType, DlPackShmEvaluator, DlPackShmReport,
     DlTensorDescriptor, PosixShmRing, ShmError, ShmSlot, MAX_TENSOR_DIMS,
+};
+pub use dust_trainer::{
+    ActivationType, DustLayer, DustMultiLayerNetwork, DustTrainer, DustTrainerConfig,
+    DustTrainingEvaluator, DustTrainingReport,
 };
 pub use early_exit::{EarlyExitConfig, EarlyExitEvaluator, EarlyExitReport};
 pub use engine::{EngineConfig, GenerationOutput, GenerationParams, KvPrecision, ModelEngine, ModelMemoryProfile, Utf8StreamDecoder};
