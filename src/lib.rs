@@ -10,6 +10,7 @@ pub mod early_exit;
 pub mod engine;
 pub mod engines;
 pub mod flocking_consensus;
+pub mod graphon_attention;
 pub mod kb_rkhs;
 pub mod kernels;
 pub mod lie_trajectory;
@@ -52,6 +53,11 @@ pub use engines::{CpuEngine, HybridSinkEngine, QuantizedKvEngine, RawFfiEngine, 
 pub use flocking_consensus::{
     DynamicFlockingTopology, FlockingAgentState, FlockingConsensusEvaluator, FlockingConsensusReport,
     ReynoldsFlockingController, SwarmAgentConfig,
+};
+pub use graphon_attention::{
+    ContinuousGraphon, GraphonAttentionConfig, GraphonAttentionEvaluator,
+    GraphonAttentionInterpolator, GraphonAttentionReport, SpectralGraphon,
+    StepGraphonPartition, GRAPHON_EPSILON,
 };
 pub use kb_rkhs::{Complex64, KbRkhsConfig, KbRkhsEvaluator, KbRkhsHeadCache, KbRkhsReport};
 pub use kernels::{

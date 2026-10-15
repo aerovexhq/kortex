@@ -11,10 +11,11 @@
 
 use kortex::{
     ActivePerceptionEvaluator, AvionicsBridgeEvaluator, CompressiveSensingEvaluator,
-    DistributedMeshEvaluator, DlPackShmEvaluator, FlockingConsensusEvaluator, KbRkhsEvaluator,
-    LieGroupPredictorEvaluator, MicroKernelEvaluator, MultiModalFusionEvaluator,
-    NeuromorphicSpikeEvaluator, QuantumDensityEvaluator, SymplecticDynamicsEvaluator,
-    TdaSkeletonEvaluator, ZeroAdaptEvaluator, ZoSpecDecEvaluator,
+    DistributedMeshEvaluator, DlPackShmEvaluator, FlockingConsensusEvaluator,
+    GraphonAttentionEvaluator, KbRkhsEvaluator, LieGroupPredictorEvaluator,
+    MicroKernelEvaluator, MultiModalFusionEvaluator, NeuromorphicSpikeEvaluator,
+    QuantumDensityEvaluator, SymplecticDynamicsEvaluator, TdaSkeletonEvaluator,
+    ZeroAdaptEvaluator, ZoSpecDecEvaluator,
 };
 
 #[test]
@@ -35,6 +36,7 @@ fn verify_all_kortex_innovation_subsystems() {
     let tda_report = TdaSkeletonEvaluator::evaluate();
     let cs_report = CompressiveSensingEvaluator::default().evaluate();
     let quantum_report = QuantumDensityEvaluator::default().evaluate_performance();
+    let graphon_report = GraphonAttentionEvaluator::default().evaluate_performance();
 
     println!("\n=== KORTEX INNOVATION SUBSYSTEMS EMPIRICAL BENCHMARK REPORT ===");
     println!(
@@ -208,6 +210,16 @@ fn verify_all_kortex_innovation_subsystems() {
         quantum_report.orthogonal_subspace_fidelity,
         quantum_report.total_memory_footprint_bytes
     );
+    println!(
+        "[Graphon-Limit] Cut Err: {:.4} | Spectral Energy: {:.2}% | Ortho Err: {:.2e} | Transfer Err: {:.4} | Resample: {:.2} us | Ratio: {:.1}x | Mem: {} B",
+        graphon_report.cut_metric_error,
+        graphon_report.spectral_energy_ratio * 100.0,
+        graphon_report.eigenfunction_orthogonality_err,
+        graphon_report.transferability_error,
+        graphon_report.resampling_latency_us,
+        graphon_report.compression_ratio,
+        graphon_report.total_memory_footprint_bytes
+    );
 
     // 1. Distributed Mesh gates
     assert!(mesh_report.wire_compression_ratio > 90.0);
@@ -328,4 +340,13 @@ fn verify_all_kortex_innovation_subsystems() {
     assert!(quantum_report.orthogonal_subspace_fidelity < 0.15);
     assert!(quantum_report.born_attention_partition_error < 1e-5);
     assert!(quantum_report.total_memory_footprint_bytes < 10_000);
+
+    // 17. Graphon Continuous Limit Attention & Spectral Cut-Metric Quantization gates
+    assert!(graphon_report.cut_metric_error < 0.15);
+    assert!(graphon_report.spectral_energy_ratio >= 0.85);
+    assert!(graphon_report.eigenfunction_orthogonality_err < 1e-3);
+    assert!(graphon_report.transferability_error < 0.15);
+    assert!(graphon_report.resampling_latency_us < 50.0);
+    assert!(graphon_report.compression_ratio >= 4.0);
+    assert!(graphon_report.total_memory_footprint_bytes < 10_000);
 }
