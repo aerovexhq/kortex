@@ -11,7 +11,7 @@
 
 use kortex::{
     AvionicsBridgeEvaluator, DistributedMeshEvaluator, FlockingConsensusEvaluator, KbRkhsEvaluator,
-    MicroKernelEvaluator, ZeroAdaptEvaluator, ZoSpecDecEvaluator,
+    MicroKernelEvaluator, NeuromorphicSpikeEvaluator, ZeroAdaptEvaluator, ZoSpecDecEvaluator,
 };
 
 #[test]
@@ -23,6 +23,7 @@ fn verify_all_kortex_innovation_subsystems() {
     let kb_report = KbRkhsEvaluator::evaluate();
     let avionics_report = AvionicsBridgeEvaluator::evaluate();
     let flocking_report = FlockingConsensusEvaluator::evaluate();
+    let spike_report = NeuromorphicSpikeEvaluator::evaluate_synthetic_trajectory();
 
     println!("\n=== KORTEX INNOVATION SUBSYSTEMS EMPIRICAL BENCHMARK REPORT ===");
     println!(
@@ -98,6 +99,19 @@ fn verify_all_kortex_innovation_subsystems() {
         flocking_report.min_inter_uav_distance_m,
         flocking_report.total_memory_footprint_kib
     );
+    println!(
+        "[Spike-DVS]  Events: {} acc / {} filt | Sparsity: {:.1}% | Tokens: {} | Burst Latency: {:.2} us | Flow Vel: ({:.2}, {:.2}) px/ms (err {:.2}) | Max Logit: {:.2} | Mem: {} B",
+        spike_report.accepted_events,
+        spike_report.filtered_events,
+        spike_report.temporal_sparsity_ratio * 100.0,
+        spike_report.emitted_tokens,
+        spike_report.event_burst_latency_us,
+        spike_report.estimated_velocity.0,
+        spike_report.estimated_velocity.1,
+        spike_report.velocity_error_mag,
+        spike_report.max_attention_logit,
+        spike_report.memory_footprint_bytes
+    );
 
     // 1. Distributed Mesh gates
     assert!(mesh_report.wire_compression_ratio > 90.0);
@@ -138,4 +152,12 @@ fn verify_all_kortex_innovation_subsystems() {
     assert!(flocking_report.min_inter_uav_distance_m >= 3.0);
     assert!(flocking_report.consensus_cycle_latency_us < 5000.0);
     assert!(flocking_report.total_memory_footprint_kib < 50.0);
+
+    // 8. Neuromorphic Event Camera Asynchronous Spike Injection gates
+    assert!(spike_report.temporal_sparsity_ratio >= 0.85);
+    assert!(spike_report.event_burst_latency_us < 50.0);
+    assert!(spike_report.accepted_events > 100);
+    assert!(spike_report.filtered_events > 0);
+    assert!(spike_report.memory_footprint_bytes < 250_000);
+    assert!(spike_report.max_attention_logit.is_finite());
 }

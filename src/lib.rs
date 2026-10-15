@@ -11,6 +11,7 @@ pub mod kb_rkhs;
 pub mod kernels;
 pub mod mesh;
 pub mod model_cache;
+pub mod neuromorphic_spike;
 pub mod sampling;
 pub mod zero_adapt;
 pub mod zo_specdec;
@@ -39,6 +40,11 @@ pub use mesh::{
     PipelineStageAssignment, SwarmNode, SwarmPipelineScheduler,
 };
 pub use model_cache::{ModelCache, ModelCacheEntry, OptimalRunnerProfile, RunnerType};
+pub use neuromorphic_spike::{
+    ActivePatchToken, DvsEvent, EventCameraConfig, EventSurfaceRaster, NeuromorphicAttentionBuffer,
+    NeuromorphicSpikeEvaluator, NeuromorphicSpikeProjector, NeuromorphicSpikeReport,
+    PatchEnergyTracker,
+};
 pub use zero_adapt::{
     DeterministicGaussianRng, KestrelFlightReward, ZeroAdaptAdapter, ZeroAdaptConfig,
     ZeroAdaptEvaluator, ZeroAdaptReport,
