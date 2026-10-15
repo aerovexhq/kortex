@@ -3,6 +3,7 @@ pub mod avionics_bridge;
 pub mod benchmark;
 pub mod chat;
 pub mod compression;
+pub mod dlpack_shm;
 pub mod early_exit;
 pub mod engine;
 pub mod engines;
@@ -23,6 +24,10 @@ pub use avionics_bridge::{
     RolloutSafetyConfig, SononAcousticLogitFrame, SononLogitRingBuffer, WatchdogState,
 };
 pub use benchmark::{BenchmarkReport, TokenSpeedCalculator};
+pub use dlpack_shm::{
+    DlDataType, DlDataTypeCode, DlDevice, DlDeviceType, DlPackShmEvaluator, DlPackShmReport,
+    DlTensorDescriptor, PosixShmRing, ShmError, ShmSlot, MAX_TENSOR_DIMS,
+};
 pub use early_exit::{EarlyExitConfig, EarlyExitEvaluator, EarlyExitReport};
 pub use engine::{EngineConfig, GenerationOutput, GenerationParams, KvPrecision, ModelEngine, ModelMemoryProfile, Utf8StreamDecoder};
 pub use engines::{CpuEngine, HybridSinkEngine, QuantizedKvEngine, RawFfiEngine, SafeLlamaEngine, SlidingWindowEngine, SpeculativeEngine};

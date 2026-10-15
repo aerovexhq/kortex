@@ -10,8 +10,9 @@
 #![deny(unsafe_code)]
 
 use kortex::{
-    AvionicsBridgeEvaluator, DistributedMeshEvaluator, FlockingConsensusEvaluator, KbRkhsEvaluator,
-    MicroKernelEvaluator, NeuromorphicSpikeEvaluator, ZeroAdaptEvaluator, ZoSpecDecEvaluator,
+    AvionicsBridgeEvaluator, DistributedMeshEvaluator, DlPackShmEvaluator,
+    FlockingConsensusEvaluator, KbRkhsEvaluator, MicroKernelEvaluator, NeuromorphicSpikeEvaluator,
+    ZeroAdaptEvaluator, ZoSpecDecEvaluator,
 };
 
 #[test]
@@ -24,6 +25,7 @@ fn verify_all_kortex_innovation_subsystems() {
     let avionics_report = AvionicsBridgeEvaluator::evaluate();
     let flocking_report = FlockingConsensusEvaluator::evaluate();
     let spike_report = NeuromorphicSpikeEvaluator::evaluate_synthetic_trajectory();
+    let dlpack_report = DlPackShmEvaluator::evaluate();
 
     println!("\n=== KORTEX INNOVATION SUBSYSTEMS EMPIRICAL BENCHMARK REPORT ===");
     println!(
@@ -112,6 +114,16 @@ fn verify_all_kortex_innovation_subsystems() {
         spike_report.max_attention_logit,
         spike_report.memory_footprint_bytes
     );
+    println!(
+        "[DLPack-SHM] Write: {:.1} ns | Read: {:.1} ns | Stride: {:.1} ns | Torn: {} | Contiguous: {} | Throughput: {:.2} GB/s | Mem: {} B",
+        dlpack_report.seqlock_write_latency_ns,
+        dlpack_report.seqlock_read_latency_ns,
+        dlpack_report.strided_index_latency_ns,
+        dlpack_report.torn_reads_detected,
+        dlpack_report.dlpack_contiguous_verified,
+        dlpack_report.zero_copy_throughput_gbps,
+        dlpack_report.total_memory_footprint_bytes
+    );
 
     // 1. Distributed Mesh gates
     assert!(mesh_report.wire_compression_ratio > 90.0);
@@ -160,4 +172,12 @@ fn verify_all_kortex_innovation_subsystems() {
     assert!(spike_report.filtered_events > 0);
     assert!(spike_report.memory_footprint_bytes < 250_000);
     assert!(spike_report.max_attention_logit.is_finite());
+
+    // 9. Zero-Copy DLPack GPU Tensor Bridge & POSIX SHM gates
+    assert!(dlpack_report.seqlock_write_latency_ns < 1000.0);
+    assert!(dlpack_report.seqlock_read_latency_ns < 1000.0);
+    assert!(dlpack_report.strided_index_latency_ns < 50.0);
+    assert_eq!(dlpack_report.torn_reads_detected, 0);
+    assert!(dlpack_report.dlpack_contiguous_verified);
+    assert!(dlpack_report.zero_copy_throughput_gbps > 0.0);
 }
