@@ -11,8 +11,9 @@
 
 use kortex::{
     AvionicsBridgeEvaluator, DistributedMeshEvaluator, DlPackShmEvaluator,
-    FlockingConsensusEvaluator, KbRkhsEvaluator, MicroKernelEvaluator, MultiModalFusionEvaluator,
-    NeuromorphicSpikeEvaluator, ZeroAdaptEvaluator, ZoSpecDecEvaluator,
+    FlockingConsensusEvaluator, KbRkhsEvaluator, LieGroupPredictorEvaluator,
+    MicroKernelEvaluator, MultiModalFusionEvaluator, NeuromorphicSpikeEvaluator,
+    ZeroAdaptEvaluator, ZoSpecDecEvaluator,
 };
 
 #[test]
@@ -27,6 +28,7 @@ fn verify_all_kortex_innovation_subsystems() {
     let spike_report = NeuromorphicSpikeEvaluator::evaluate_synthetic_trajectory();
     let dlpack_report = DlPackShmEvaluator::evaluate();
     let fusion_report = MultiModalFusionEvaluator::evaluate();
+    let lie_report = LieGroupPredictorEvaluator::evaluate();
 
     println!("\n=== KORTEX INNOVATION SUBSYSTEMS EMPIRICAL BENCHMARK REPORT ===");
     println!(
@@ -135,6 +137,16 @@ fn verify_all_kortex_innovation_subsystems() {
         fusion_report.occlusion_response_retention_pct,
         fusion_report.total_memory_footprint_bytes
     );
+    println!(
+        "[Lie-Group]   Latency: {:.2} us | Max Ortho Err: {:.2e} | Log-Exp Roundtrip: {:.2e} | Pitch Drift: {:.2e} | Steps: {} | Max Logit: {:.2} | Mem: {} B",
+        lie_report.propagation_latency_us,
+        lie_report.max_orthogonality_error,
+        lie_report.log_exp_roundtrip_error,
+        lie_report.helical_pitch_drift,
+        lie_report.total_lookahead_steps,
+        lie_report.collision_attention_logit,
+        lie_report.total_memory_footprint_bytes
+    );
 
     // 1. Distributed Mesh gates
     assert!(mesh_report.wire_compression_ratio > 90.0);
@@ -198,4 +210,12 @@ fn verify_all_kortex_innovation_subsystems() {
     assert!((fusion_report.visual_blackout_alpha - 1.0).abs() < 1e-4);
     assert!(fusion_report.spatial_alignment_verified);
     assert!(fusion_report.total_memory_footprint_bytes < 10_000);
+
+    // 11. Online Lie-Group Geometric Trajectory Predictor gates
+    assert!(lie_report.propagation_latency_us < 5.0);
+    assert!(lie_report.max_orthogonality_error < 1e-4);
+    assert!(lie_report.log_exp_roundtrip_error < 1e-3);
+    assert!(lie_report.helical_pitch_drift < 1e-3);
+    assert_eq!(lie_report.total_lookahead_steps, 8);
+    assert!(lie_report.collision_attention_logit.is_finite());
 }

@@ -10,6 +10,7 @@ pub mod engines;
 pub mod flocking_consensus;
 pub mod kb_rkhs;
 pub mod kernels;
+pub mod lie_trajectory;
 pub mod mesh;
 pub mod model_cache;
 pub mod multimodal_fusion;
@@ -40,6 +41,10 @@ pub use kb_rkhs::{Complex64, KbRkhsConfig, KbRkhsEvaluator, KbRkhsHeadCache, KbR
 pub use kernels::{
     AlignedTile64, BergmanSimdKernel, E8LatticeMicroKernel, MicroKernelBenchmarkReport,
     MicroKernelEvaluator, TiledContractionKernel,
+};
+pub use lie_trajectory::{
+    exp_se3, log_se3, skew_symmetric, LieGroupPredictor, LieGroupPredictorEvaluator,
+    LieGroupPredictorReport, Se3Pose, Se3Twist, TrajectoryLookaheadToken,
 };
 pub use mesh::{
     CdrKvShardFrame, ConsistentHashRing, DistributedMeshEvaluator, DistributedMeshReport,
