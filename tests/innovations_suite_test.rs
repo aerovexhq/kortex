@@ -12,7 +12,7 @@
 use kortex::{
     ActivePerceptionEvaluator, AvionicsBridgeEvaluator, CompressiveSensingEvaluator,
     DistributedMeshEvaluator, DlPackShmEvaluator, FlockingConsensusEvaluator,
-    GraphonAttentionEvaluator, HyperbolicEvaluator, KbRkhsEvaluator,
+    GraphonAttentionEvaluator, HyperbolicEvaluator, KahlerEvaluator, KbRkhsEvaluator,
     LieGroupPredictorEvaluator, MicroKernelEvaluator, MultiModalFusionEvaluator,
     NeuromorphicSpikeEvaluator, PrivacySketchesEvaluator, QuantumDensityEvaluator,
     RmtEvaluator, SymplecticDynamicsEvaluator, TdaSkeletonEvaluator, TropicalEvaluator,
@@ -42,6 +42,7 @@ fn verify_all_kortex_innovation_subsystems() {
     let hyperbolic_report = HyperbolicEvaluator::default().evaluate_performance();
     let tropical_report = TropicalEvaluator::default().evaluate_performance();
     let rmt_report = RmtEvaluator::default().evaluate_performance();
+    let kahler_report = KahlerEvaluator::run_full_evaluation();
 
     println!("\n=== KORTEX INNOVATION SUBSYSTEMS EMPIRICAL BENCHMARK REPORT ===");
     println!(
@@ -269,6 +270,17 @@ fn verify_all_kortex_innovation_subsystems() {
         rmt_report.orthogonality_error,
         rmt_report.total_memory_footprint_bytes
     );
+    println!(
+        "[Kahler-Holomorphic] CR Err: {:.2e} | Angle Err: {:.2e} | Pos: {} | Barrier: {} | CRoPE Err: {:.2e} | Ratio: {:.1}x | Query: {:.2} us | Mem: {} B",
+        kahler_report.cr_derivative_error,
+        kahler_report.conformal_angle_error,
+        kahler_report.metric_positivity_verified,
+        kahler_report.barrier_confinement_verified,
+        kahler_report.crope_isometry_error,
+        kahler_report.compaction_ratio,
+        kahler_report.query_latency_us,
+        kahler_report.memory_footprint_bytes
+    );
 
     // 1. Distributed Mesh gates
     assert!(mesh_report.wire_compression_ratio > 90.0);
@@ -438,4 +450,14 @@ fn verify_all_kortex_innovation_subsystems() {
     assert!(rmt_report.spike_count >= 4 && rmt_report.spike_count <= 16);
     assert!(rmt_report.condition_number <= 100.0);
     assert!(rmt_report.total_memory_footprint_bytes < 50_000);
+
+    // 22. Complex Kähler Manifolds & Holomorphic Key-Value Bundling gates
+    assert!(kahler_report.metric_positivity_verified);
+    assert!(kahler_report.barrier_confinement_verified);
+    assert!(kahler_report.cr_derivative_error < 1e-5);
+    assert!(kahler_report.conformal_angle_error < 1e-4);
+    assert!(kahler_report.crope_isometry_error < 1e-7);
+    assert!(kahler_report.compaction_ratio >= 2.0);
+    assert!(kahler_report.query_latency_us < 15.0);
+    assert!(kahler_report.memory_footprint_bytes < 50_000);
 }

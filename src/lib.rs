@@ -12,6 +12,7 @@ pub mod engines;
 pub mod flocking_consensus;
 pub mod graphon_attention;
 pub mod hyperbolic_attention;
+pub mod kahler_attention;
 pub mod kb_rkhs;
 pub mod kernels;
 pub mod lie_trajectory;
@@ -67,6 +68,10 @@ pub use hyperbolic_attention::{
     HyperbolicAttentionCache, HyperbolicConfig, HyperbolicEvaluator, HyperbolicPolarQuantizer,
     HyperbolicReport, LorentzVector, PoincareVector, QuantizedHyperbolicKey,
     DEFAULT_HYPERBOLIC_CURVATURE, HYPERBOLIC_EPSILON,
+};
+pub use kahler_attention::{
+    BergmanPoincarePotential, ComplexVector, ConformalRouter, KahlerComplex, KahlerEvaluator,
+    KahlerPotential, KahlerReport, StreamingBergmanCache,
 };
 pub use kb_rkhs::{Complex64, KbRkhsConfig, KbRkhsEvaluator, KbRkhsHeadCache, KbRkhsReport};
 pub use kernels::{
