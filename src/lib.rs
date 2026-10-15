@@ -21,6 +21,7 @@ pub mod multimodal_fusion;
 pub mod neuromorphic_spike;
 pub mod privacy_sketches;
 pub mod quantum_density;
+pub mod rmt_noise_deflation;
 pub mod sampling;
 pub mod symplectic_dynamics;
 pub mod tda_skeleton;
@@ -98,6 +99,10 @@ pub use privacy_sketches::{
 pub use quantum_density::{
     FactorizedDensityMatrix, PovmAttentionKernel, ProjectiveState, QuantumDensityConfig,
     QuantumDensityEvaluator, QuantumDensityReport, QuantumInformationEngine, NUMERICAL_EPSILON,
+};
+pub use rmt_noise_deflation::{
+    MarchenkoPasturAnalytics, RmtConfig, RmtCovarianceCleaner, RmtEvaluator,
+    RmtProjectedKeyCache, RmtReport, RMT_EPSILON,
 };
 pub use symplectic_dynamics::{
     PhaseSpaceState, SeparableHamiltonian, ShadowHamiltonianTracker, StormerVerletIntegrator,

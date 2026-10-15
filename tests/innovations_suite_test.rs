@@ -15,8 +15,8 @@ use kortex::{
     GraphonAttentionEvaluator, HyperbolicEvaluator, KbRkhsEvaluator,
     LieGroupPredictorEvaluator, MicroKernelEvaluator, MultiModalFusionEvaluator,
     NeuromorphicSpikeEvaluator, PrivacySketchesEvaluator, QuantumDensityEvaluator,
-    SymplecticDynamicsEvaluator, TdaSkeletonEvaluator, TropicalEvaluator, ZeroAdaptEvaluator,
-    ZoSpecDecEvaluator,
+    RmtEvaluator, SymplecticDynamicsEvaluator, TdaSkeletonEvaluator, TropicalEvaluator,
+    ZeroAdaptEvaluator, ZoSpecDecEvaluator,
 };
 
 #[test]
@@ -41,6 +41,7 @@ fn verify_all_kortex_innovation_subsystems() {
     let privacy_report = PrivacySketchesEvaluator::default().evaluate_performance();
     let hyperbolic_report = HyperbolicEvaluator::default().evaluate_performance();
     let tropical_report = TropicalEvaluator::default().evaluate_performance();
+    let rmt_report = RmtEvaluator::default().evaluate_performance();
 
     println!("\n=== KORTEX INNOVATION SUBSYSTEMS EMPIRICAL BENCHMARK REPORT ===");
     println!(
@@ -254,6 +255,20 @@ fn verify_all_kortex_innovation_subsystems() {
         tropical_report.max_observed_deficit,
         tropical_report.total_memory_footprint_bytes
     );
+    println!(
+        "[RMT-Deflation] Spikes: {} | Gamma: {:.3} | Retain: {:.1}% | Atten: {:.1} dB | Cond: {:.1} | Clean: {:.2} us | Query: {:.2} us | Recall: {:.1}% | Ratio: {:.1}x | Ortho Err: {:.2e} | Mem: {} B",
+        rmt_report.spike_count,
+        rmt_report.gamma,
+        rmt_report.energy_retention_ratio * 100.0,
+        rmt_report.noise_attenuation_db,
+        rmt_report.condition_number,
+        rmt_report.cleaning_latency_us,
+        rmt_report.query_latency_us,
+        rmt_report.attention_recall * 100.0,
+        rmt_report.compression_ratio,
+        rmt_report.orthogonality_error,
+        rmt_report.total_memory_footprint_bytes
+    );
 
     // 1. Distributed Mesh gates
     assert!(mesh_report.wire_compression_ratio > 90.0);
@@ -411,4 +426,16 @@ fn verify_all_kortex_innovation_subsystems() {
     assert!(tropical_report.sandwich_bound_verified);
     assert!(tropical_report.envelope_soundness_verified);
     assert!(tropical_report.total_memory_footprint_bytes < 30_000);
+
+    // 21. Random Matrix Theory (RMT) & Marchenko-Pastur Spectral Noise Deflation gates
+    assert!(rmt_report.energy_retention_ratio >= 0.90);
+    assert!(rmt_report.noise_attenuation_db >= 12.0);
+    assert!(rmt_report.cleaning_latency_us < 150.0);
+    assert!(rmt_report.query_latency_us < 10.0);
+    assert!(rmt_report.attention_recall >= 0.95);
+    assert!(rmt_report.compression_ratio >= 4.0);
+    assert!(rmt_report.orthogonality_error < 1e-4);
+    assert!(rmt_report.spike_count >= 4 && rmt_report.spike_count <= 16);
+    assert!(rmt_report.condition_number <= 100.0);
+    assert!(rmt_report.total_memory_footprint_bytes < 50_000);
 }
