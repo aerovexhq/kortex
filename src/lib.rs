@@ -11,6 +11,7 @@ pub mod engine;
 pub mod engines;
 pub mod flocking_consensus;
 pub mod graphon_attention;
+pub mod hyperbolic_attention;
 pub mod kb_rkhs;
 pub mod kernels;
 pub mod lie_trajectory;
@@ -59,6 +60,11 @@ pub use graphon_attention::{
     ContinuousGraphon, GraphonAttentionConfig, GraphonAttentionEvaluator,
     GraphonAttentionInterpolator, GraphonAttentionReport, SpectralGraphon,
     StepGraphonPartition, GRAPHON_EPSILON,
+};
+pub use hyperbolic_attention::{
+    HyperbolicAttentionCache, HyperbolicConfig, HyperbolicEvaluator, HyperbolicPolarQuantizer,
+    HyperbolicReport, LorentzVector, PoincareVector, QuantizedHyperbolicKey,
+    DEFAULT_HYPERBOLIC_CURVATURE, HYPERBOLIC_EPSILON,
 };
 pub use kb_rkhs::{Complex64, KbRkhsConfig, KbRkhsEvaluator, KbRkhsHeadCache, KbRkhsReport};
 pub use kernels::{

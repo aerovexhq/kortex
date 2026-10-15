@@ -12,10 +12,11 @@
 use kortex::{
     ActivePerceptionEvaluator, AvionicsBridgeEvaluator, CompressiveSensingEvaluator,
     DistributedMeshEvaluator, DlPackShmEvaluator, FlockingConsensusEvaluator,
-    GraphonAttentionEvaluator, KbRkhsEvaluator, LieGroupPredictorEvaluator,
-    MicroKernelEvaluator, MultiModalFusionEvaluator, NeuromorphicSpikeEvaluator,
-    PrivacySketchesEvaluator, QuantumDensityEvaluator, SymplecticDynamicsEvaluator,
-    TdaSkeletonEvaluator, ZeroAdaptEvaluator, ZoSpecDecEvaluator,
+    GraphonAttentionEvaluator, HyperbolicEvaluator, KbRkhsEvaluator,
+    LieGroupPredictorEvaluator, MicroKernelEvaluator, MultiModalFusionEvaluator,
+    NeuromorphicSpikeEvaluator, PrivacySketchesEvaluator, QuantumDensityEvaluator,
+    SymplecticDynamicsEvaluator, TdaSkeletonEvaluator, ZeroAdaptEvaluator,
+    ZoSpecDecEvaluator,
 };
 
 #[test]
@@ -38,6 +39,7 @@ fn verify_all_kortex_innovation_subsystems() {
     let quantum_report = QuantumDensityEvaluator::default().evaluate_performance();
     let graphon_report = GraphonAttentionEvaluator::default().evaluate_performance();
     let privacy_report = PrivacySketchesEvaluator::default().evaluate_performance();
+    let hyperbolic_report = HyperbolicEvaluator::default().evaluate_performance();
 
     println!("\n=== KORTEX INNOVATION SUBSYSTEMS EMPIRICAL BENCHMARK REPORT ===");
     println!(
@@ -231,6 +233,17 @@ fn verify_all_kortex_innovation_subsystems() {
         privacy_report.count_min_debiased_mse,
         privacy_report.total_memory_footprint_bytes
     );
+    println!(
+        "[Hyperbolic-Poincare] Isometry Err: {:.2e} | Cos Sim: {:.4} | Frob Err: {:.4} | Root Mass: {:.1}% | Entropy: {:.4} | Query: {:.2} us | Ratio: {:.2}x | Mem: {} B",
+        hyperbolic_report.isometry_error,
+        hyperbolic_report.cosine_similarity,
+        hyperbolic_report.relative_frobenius_error,
+        hyperbolic_report.root_attention_mass * 100.0,
+        hyperbolic_report.attention_entropy,
+        hyperbolic_report.query_latency_us,
+        hyperbolic_report.compression_ratio,
+        hyperbolic_report.total_memory_footprint_bytes
+    );
 
     // 1. Distributed Mesh gates
     assert!(mesh_report.wire_compression_ratio > 90.0);
@@ -368,4 +381,14 @@ fn verify_all_kortex_innovation_subsystems() {
     assert!(privacy_report.sketch_energy_rel_error < 0.60);
     assert!(privacy_report.count_min_debiased_mse < 50.0);
     assert!(privacy_report.total_memory_footprint_bytes < 100_000);
+
+    // 19. Hyperbolic Poincaré Attention & Lorentz Hierarchical Manifolds gates
+    assert!(hyperbolic_report.isometry_error < 1e-4);
+    assert!(hyperbolic_report.mobius_identity_error < 1e-5);
+    assert!(hyperbolic_report.mobius_inverse_error < 1e-5);
+    assert!(hyperbolic_report.cosine_similarity >= 0.98);
+    assert!(hyperbolic_report.relative_frobenius_error < 0.15);
+    assert!(hyperbolic_report.query_latency_us < 25.0);
+    assert!(hyperbolic_report.compression_ratio >= 1.8);
+    assert!(hyperbolic_report.total_memory_footprint_bytes < 30_000);
 }
