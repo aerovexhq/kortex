@@ -13,8 +13,8 @@ use kortex::{
     ActivePerceptionEvaluator, AvionicsBridgeEvaluator, CompressiveSensingEvaluator,
     DistributedMeshEvaluator, DlPackShmEvaluator, FlockingConsensusEvaluator, KbRkhsEvaluator,
     LieGroupPredictorEvaluator, MicroKernelEvaluator, MultiModalFusionEvaluator,
-    NeuromorphicSpikeEvaluator, SymplecticDynamicsEvaluator, TdaSkeletonEvaluator,
-    ZeroAdaptEvaluator, ZoSpecDecEvaluator,
+    NeuromorphicSpikeEvaluator, QuantumDensityEvaluator, SymplecticDynamicsEvaluator,
+    TdaSkeletonEvaluator, ZeroAdaptEvaluator, ZoSpecDecEvaluator,
 };
 
 #[test]
@@ -34,6 +34,7 @@ fn verify_all_kortex_innovation_subsystems() {
     let symplectic_report = SymplecticDynamicsEvaluator::evaluate();
     let tda_report = TdaSkeletonEvaluator::evaluate();
     let cs_report = CompressiveSensingEvaluator::default().evaluate();
+    let quantum_report = QuantumDensityEvaluator::default().evaluate_performance();
 
     println!("\n=== KORTEX INNOVATION SUBSYSTEMS EMPIRICAL BENCHMARK REPORT ===");
     println!(
@@ -195,6 +196,18 @@ fn verify_all_kortex_innovation_subsystems() {
         cs_report.top_k_attention_recall * 100.0,
         cs_report.total_memory_footprint_bytes
     );
+    println!(
+        "[Quantum-POVM] Query: {:.2} us | Update: {:.2} us | Ratio: {:.1}x | Trace Err: {:.2e} | Purity: {:.4} | Entropy: {:.4} | Collinear: {:.4} | Orth: {:.2e} | Mem: {} B",
+        quantum_report.query_expectation_latency_us,
+        quantum_report.streaming_update_latency_us,
+        quantum_report.state_compaction_ratio,
+        quantum_report.trace_conservation_err,
+        quantum_report.purity,
+        quantum_report.von_neumann_entropy,
+        quantum_report.collinear_subspace_fidelity,
+        quantum_report.orthogonal_subspace_fidelity,
+        quantum_report.total_memory_footprint_bytes
+    );
 
     // 1. Distributed Mesh gates
     assert!(mesh_report.wire_compression_ratio > 90.0);
@@ -302,4 +315,17 @@ fn verify_all_kortex_innovation_subsystems() {
     assert!(cs_report.compression_ratio >= 4.0);
     assert!(cs_report.measured_max_coherence < 0.65);
     assert!(cs_report.top_k_attention_recall >= 0.85);
+
+    // 16. Quantum POVM & Projective Hilbert Space Attention State Compaction gates
+    assert!(quantum_report.query_expectation_latency_us < 15.0);
+    assert!(quantum_report.streaming_update_latency_us < 10.0);
+    assert!(quantum_report.state_compaction_ratio >= 8.0);
+    assert!(quantum_report.trace_conservation_err < 1e-4);
+    assert!(quantum_report.purity >= 1.0 / (quantum_report.head_dim as f32));
+    assert!(quantum_report.purity <= 1.0001);
+    assert!(quantum_report.von_neumann_entropy >= 0.0);
+    assert!(quantum_report.collinear_subspace_fidelity >= 0.95);
+    assert!(quantum_report.orthogonal_subspace_fidelity < 0.15);
+    assert!(quantum_report.born_attention_partition_error < 1e-5);
+    assert!(quantum_report.total_memory_footprint_bytes < 10_000);
 }

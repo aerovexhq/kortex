@@ -17,6 +17,7 @@ pub mod mesh;
 pub mod model_cache;
 pub mod multimodal_fusion;
 pub mod neuromorphic_spike;
+pub mod quantum_density;
 pub mod sampling;
 pub mod symplectic_dynamics;
 pub mod tda_skeleton;
@@ -74,6 +75,10 @@ pub use neuromorphic_spike::{
     ActivePatchToken, DvsEvent, EventCameraConfig, EventSurfaceRaster, NeuromorphicAttentionBuffer,
     NeuromorphicSpikeEvaluator, NeuromorphicSpikeProjector, NeuromorphicSpikeReport,
     PatchEnergyTracker,
+};
+pub use quantum_density::{
+    FactorizedDensityMatrix, PovmAttentionKernel, ProjectiveState, QuantumDensityConfig,
+    QuantumDensityEvaluator, QuantumDensityReport, QuantumInformationEngine, NUMERICAL_EPSILON,
 };
 pub use symplectic_dynamics::{
     PhaseSpaceState, SeparableHamiltonian, ShadowHamiltonianTracker, StormerVerletIntegrator,
