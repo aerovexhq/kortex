@@ -12,6 +12,7 @@ pub mod kb_rkhs;
 pub mod kernels;
 pub mod mesh;
 pub mod model_cache;
+pub mod multimodal_fusion;
 pub mod neuromorphic_spike;
 pub mod sampling;
 pub mod zero_adapt;
@@ -45,6 +46,10 @@ pub use mesh::{
     PipelineStageAssignment, SwarmNode, SwarmPipelineScheduler,
 };
 pub use model_cache::{ModelCache, ModelCacheEntry, OptimalRunnerProfile, RunnerType};
+pub use multimodal_fusion::{
+    AcousticObservation, CameraIntrinsics, FusedMultiModalToken, GatedCrossAttentionFusion,
+    MultiModalFusionEvaluator, MultiModalFusionReport, VisualPatchObservation,
+};
 pub use neuromorphic_spike::{
     ActivePatchToken, DvsEvent, EventCameraConfig, EventSurfaceRaster, NeuromorphicAttentionBuffer,
     NeuromorphicSpikeEvaluator, NeuromorphicSpikeProjector, NeuromorphicSpikeReport,

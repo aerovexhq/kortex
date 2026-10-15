@@ -11,8 +11,8 @@
 
 use kortex::{
     AvionicsBridgeEvaluator, DistributedMeshEvaluator, DlPackShmEvaluator,
-    FlockingConsensusEvaluator, KbRkhsEvaluator, MicroKernelEvaluator, NeuromorphicSpikeEvaluator,
-    ZeroAdaptEvaluator, ZoSpecDecEvaluator,
+    FlockingConsensusEvaluator, KbRkhsEvaluator, MicroKernelEvaluator, MultiModalFusionEvaluator,
+    NeuromorphicSpikeEvaluator, ZeroAdaptEvaluator, ZoSpecDecEvaluator,
 };
 
 #[test]
@@ -26,6 +26,7 @@ fn verify_all_kortex_innovation_subsystems() {
     let flocking_report = FlockingConsensusEvaluator::evaluate();
     let spike_report = NeuromorphicSpikeEvaluator::evaluate_synthetic_trajectory();
     let dlpack_report = DlPackShmEvaluator::evaluate();
+    let fusion_report = MultiModalFusionEvaluator::evaluate();
 
     println!("\n=== KORTEX INNOVATION SUBSYSTEMS EMPIRICAL BENCHMARK REPORT ===");
     println!(
@@ -124,6 +125,16 @@ fn verify_all_kortex_innovation_subsystems() {
         dlpack_report.zero_copy_throughput_gbps,
         dlpack_report.total_memory_footprint_bytes
     );
+    println!(
+        "[Multi-Modal] Latency: {:.2} us | Balanced Alpha: {:.3} | Noisy Alpha: {:.3} (shift {:.3}) | Blackout Alpha: {:.3} | Retention: {:.1}% | Mem: {} B",
+        fusion_report.fusion_latency_us,
+        fusion_report.balanced_alpha,
+        fusion_report.noisy_audio_alpha,
+        fusion_report.alpha_shift_under_noise,
+        fusion_report.visual_blackout_alpha,
+        fusion_report.occlusion_response_retention_pct,
+        fusion_report.total_memory_footprint_bytes
+    );
 
     // 1. Distributed Mesh gates
     assert!(mesh_report.wire_compression_ratio > 90.0);
@@ -180,4 +191,11 @@ fn verify_all_kortex_innovation_subsystems() {
     assert_eq!(dlpack_report.torn_reads_detected, 0);
     assert!(dlpack_report.dlpack_contiguous_verified);
     assert!(dlpack_report.zero_copy_throughput_gbps > 0.0);
+
+    // 10. Multi-Modal Acoustic-Visual Cross-Attention Fusion gates
+    assert!(fusion_report.fusion_latency_us < 10.0);
+    assert!(fusion_report.balanced_alpha > fusion_report.noisy_audio_alpha);
+    assert!((fusion_report.visual_blackout_alpha - 1.0).abs() < 1e-4);
+    assert!(fusion_report.spatial_alignment_verified);
+    assert!(fusion_report.total_memory_footprint_bytes < 10_000);
 }
