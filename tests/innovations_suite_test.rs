@@ -13,7 +13,7 @@ use kortex::{
     ActivePerceptionEvaluator, AvionicsBridgeEvaluator, DistributedMeshEvaluator,
     DlPackShmEvaluator, FlockingConsensusEvaluator, KbRkhsEvaluator, LieGroupPredictorEvaluator,
     MicroKernelEvaluator, MultiModalFusionEvaluator, NeuromorphicSpikeEvaluator,
-    ZeroAdaptEvaluator, ZoSpecDecEvaluator,
+    SymplecticDynamicsEvaluator, ZeroAdaptEvaluator, ZoSpecDecEvaluator,
 };
 
 #[test]
@@ -30,6 +30,7 @@ fn verify_all_kortex_innovation_subsystems() {
     let fusion_report = MultiModalFusionEvaluator::evaluate();
     let lie_report = LieGroupPredictorEvaluator::evaluate();
     let perception_report = ActivePerceptionEvaluator::evaluate();
+    let symplectic_report = SymplecticDynamicsEvaluator::evaluate();
 
     println!("\n=== KORTEX INNOVATION SUBSYSTEMS EMPIRICAL BENCHMARK REPORT ===");
     println!(
@@ -158,6 +159,17 @@ fn verify_all_kortex_innovation_subsystems() {
         perception_report.max_jerk_rad_s3,
         perception_report.total_memory_footprint_bytes
     );
+    println!(
+        "[Symplectic]  Latency: {:.2} us | Energy: {:.3} -> {:.3} (drift {:.2e}) | Shadow Drift: {:.2e} | Det Err: {:.2e} | Rev Err: {:.2e} | Mem: {} B",
+        symplectic_report.step_latency_us,
+        symplectic_report.initial_energy,
+        symplectic_report.final_energy,
+        symplectic_report.energy_drift_rel,
+        symplectic_report.shadow_energy_drift_rel,
+        symplectic_report.volume_conservation_det_err,
+        symplectic_report.time_reversibility_rel_err,
+        symplectic_report.total_memory_footprint_bytes
+    );
 
     // 1. Distributed Mesh gates
     assert!(mesh_report.wire_compression_ratio > 90.0);
@@ -238,4 +250,11 @@ fn verify_all_kortex_innovation_subsystems() {
     assert!(perception_report.entropy_reduction_pct > 0.0);
     assert!(perception_report.saccade_angular_distance_deg > 0.0);
     assert!(perception_report.total_memory_footprint_bytes < 16_000);
+
+    // 13. Symplectic Hamiltonian Neural Dynamics gates
+    assert!(symplectic_report.step_latency_us < 5.0);
+    assert!(symplectic_report.volume_conservation_det_err < 1e-3);
+    assert!(symplectic_report.shadow_energy_drift_rel < 1e-3);
+    assert!(symplectic_report.time_reversibility_rel_err < 1e-4);
+    assert!(symplectic_report.total_memory_footprint_bytes < 32_000);
 }

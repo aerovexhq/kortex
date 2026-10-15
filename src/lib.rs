@@ -17,6 +17,7 @@ pub mod model_cache;
 pub mod multimodal_fusion;
 pub mod neuromorphic_spike;
 pub mod sampling;
+pub mod symplectic_dynamics;
 pub mod zero_adapt;
 pub mod zo_specdec;
 
@@ -66,6 +67,11 @@ pub use neuromorphic_spike::{
     ActivePatchToken, DvsEvent, EventCameraConfig, EventSurfaceRaster, NeuromorphicAttentionBuffer,
     NeuromorphicSpikeEvaluator, NeuromorphicSpikeProjector, NeuromorphicSpikeReport,
     PatchEnergyTracker,
+};
+pub use symplectic_dynamics::{
+    PhaseSpaceState, SeparableHamiltonian, ShadowHamiltonianTracker, StormerVerletIntegrator,
+    SymplecticDynamicsEvaluator, SymplecticDynamicsReport, Yoshida4thIntegrator,
+    DEFAULT_PHASE_DIM,
 };
 pub use zero_adapt::{
     DeterministicGaussianRng, KestrelFlightReward, ZeroAdaptAdapter, ZeroAdaptConfig,
