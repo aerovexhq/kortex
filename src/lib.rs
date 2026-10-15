@@ -1,3 +1,4 @@
+pub mod active_perception;
 pub mod autotune;
 pub mod avionics_bridge;
 pub mod benchmark;
@@ -19,6 +20,12 @@ pub mod sampling;
 pub mod zero_adapt;
 pub mod zo_specdec;
 
+pub use active_perception::{
+    angles_to_bin, bin_to_angles, great_circle_distance, spherical_to_cartesian,
+    ActivePerceptionEvaluator, ActivePerceptionPlanner, ActivePerceptionReport,
+    DirectionalEntropyField, GimbalOrientation, MinimumJerkTrajectory, SaccadeCommand,
+    TrajectorySample, AZIMUTH_BINS, ELEVATION_BINS, TOTAL_DIRECTIONAL_BINS,
+};
 pub use autotune::{AutoTuner, BenchmarkProfile, ModelTuningReport, ScoreBreakdown};
 pub use avionics_bridge::{
     AvionicsBridgeEvaluator, AvionicsBridgeReport, CanFdTelemetryFrame, CandidateActionToken,

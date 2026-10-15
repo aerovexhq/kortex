@@ -10,8 +10,8 @@
 #![deny(unsafe_code)]
 
 use kortex::{
-    AvionicsBridgeEvaluator, DistributedMeshEvaluator, DlPackShmEvaluator,
-    FlockingConsensusEvaluator, KbRkhsEvaluator, LieGroupPredictorEvaluator,
+    ActivePerceptionEvaluator, AvionicsBridgeEvaluator, DistributedMeshEvaluator,
+    DlPackShmEvaluator, FlockingConsensusEvaluator, KbRkhsEvaluator, LieGroupPredictorEvaluator,
     MicroKernelEvaluator, MultiModalFusionEvaluator, NeuromorphicSpikeEvaluator,
     ZeroAdaptEvaluator, ZoSpecDecEvaluator,
 };
@@ -29,6 +29,7 @@ fn verify_all_kortex_innovation_subsystems() {
     let dlpack_report = DlPackShmEvaluator::evaluate();
     let fusion_report = MultiModalFusionEvaluator::evaluate();
     let lie_report = LieGroupPredictorEvaluator::evaluate();
+    let perception_report = ActivePerceptionEvaluator::evaluate();
 
     println!("\n=== KORTEX INNOVATION SUBSYSTEMS EMPIRICAL BENCHMARK REPORT ===");
     println!(
@@ -147,6 +148,16 @@ fn verify_all_kortex_innovation_subsystems() {
         lie_report.collision_attention_logit,
         lie_report.total_memory_footprint_bytes
     );
+    println!(
+        "[Active-Percept] Latency: {:.2} us | Entropy: {:.3} -> {:.3} bits ({:.1}% red) | Saccade: {:.1} deg | Max Jerk: {:.1} rad/s^3 | Mem: {} B",
+        perception_report.planning_latency_us,
+        perception_report.prior_entropy_bits,
+        perception_report.post_saccade_entropy_bits,
+        perception_report.entropy_reduction_pct,
+        perception_report.saccade_angular_distance_deg,
+        perception_report.max_jerk_rad_s3,
+        perception_report.total_memory_footprint_bytes
+    );
 
     // 1. Distributed Mesh gates
     assert!(mesh_report.wire_compression_ratio > 90.0);
@@ -218,4 +229,13 @@ fn verify_all_kortex_innovation_subsystems() {
     assert!(lie_report.helical_pitch_drift < 1e-3);
     assert_eq!(lie_report.total_lookahead_steps, 8);
     assert!(lie_report.collision_attention_logit.is_finite());
+
+    // 12. Information-Theoretic Active Perception & Sensor Saccade Planner gates
+    assert!(perception_report.planning_latency_us < 10.0);
+    assert!(perception_report.boundary_velocity_error < 1e-5);
+    assert!(perception_report.boundary_acceleration_error < 1e-5);
+    assert!(perception_report.post_saccade_entropy_bits < perception_report.prior_entropy_bits);
+    assert!(perception_report.entropy_reduction_pct > 0.0);
+    assert!(perception_report.saccade_angular_distance_deg > 0.0);
+    assert!(perception_report.total_memory_footprint_bytes < 16_000);
 }
