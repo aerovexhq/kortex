@@ -24,6 +24,7 @@ pub mod quantum_density;
 pub mod sampling;
 pub mod symplectic_dynamics;
 pub mod tda_skeleton;
+pub mod tropical_sparsity;
 pub mod zero_adapt;
 pub mod zo_specdec;
 
@@ -107,6 +108,11 @@ pub use tda_skeleton::{
     MapperAttentionGraph, MapperNode, MetricType, PersistenceDiagram, PersistencePair, Simplex1,
     SimplicialSkeletonPruner, TdaSkeletonEvaluator, TdaSkeletonReport, TopologicalKeyManifold,
     VietorisRipsFiltration,
+};
+pub use tropical_sparsity::{
+    TropicalAttentionCache, TropicalBoundingBox, TropicalCluster, TropicalEngineConfig,
+    TropicalEvaluator, TropicalInferenceStats, TropicalKey, TropicalReport,
+    DEFAULT_PRUNING_DEFICIT_THRESHOLD, TROPICAL_EPSILON,
 };
 pub use zero_adapt::{
     DeterministicGaussianRng, KestrelFlightReward, ZeroAdaptAdapter, ZeroAdaptConfig,

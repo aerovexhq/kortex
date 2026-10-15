@@ -15,7 +15,7 @@ use kortex::{
     GraphonAttentionEvaluator, HyperbolicEvaluator, KbRkhsEvaluator,
     LieGroupPredictorEvaluator, MicroKernelEvaluator, MultiModalFusionEvaluator,
     NeuromorphicSpikeEvaluator, PrivacySketchesEvaluator, QuantumDensityEvaluator,
-    SymplecticDynamicsEvaluator, TdaSkeletonEvaluator, ZeroAdaptEvaluator,
+    SymplecticDynamicsEvaluator, TdaSkeletonEvaluator, TropicalEvaluator, ZeroAdaptEvaluator,
     ZoSpecDecEvaluator,
 };
 
@@ -40,6 +40,7 @@ fn verify_all_kortex_innovation_subsystems() {
     let graphon_report = GraphonAttentionEvaluator::default().evaluate_performance();
     let privacy_report = PrivacySketchesEvaluator::default().evaluate_performance();
     let hyperbolic_report = HyperbolicEvaluator::default().evaluate_performance();
+    let tropical_report = TropicalEvaluator::default().evaluate_performance();
 
     println!("\n=== KORTEX INNOVATION SUBSYSTEMS EMPIRICAL BENCHMARK REPORT ===");
     println!(
@@ -244,6 +245,15 @@ fn verify_all_kortex_innovation_subsystems() {
         hyperbolic_report.compression_ratio,
         hyperbolic_report.total_memory_footprint_bytes
     );
+    println!(
+        "[Tropical-Sparsity] Pruning: {:.1}% | Recall: {:.1}% | Latency: {:.2} us | Rel Frob: {:.4} | Max Deficit: {:.2} | Mem: {} B",
+        tropical_report.pruning_ratio * 100.0,
+        tropical_report.attention_recall * 100.0,
+        tropical_report.query_latency_us,
+        tropical_report.relative_frobenius_error,
+        tropical_report.max_observed_deficit,
+        tropical_report.total_memory_footprint_bytes
+    );
 
     // 1. Distributed Mesh gates
     assert!(mesh_report.wire_compression_ratio > 90.0);
@@ -391,4 +401,14 @@ fn verify_all_kortex_innovation_subsystems() {
     assert!(hyperbolic_report.query_latency_us < 25.0);
     assert!(hyperbolic_report.compression_ratio >= 1.8);
     assert!(hyperbolic_report.total_memory_footprint_bytes < 30_000);
+
+    // 20. Tropical Geometry & Min-Plus Polytope Attention Sparsification gates
+    assert!(tropical_report.pruning_ratio >= 0.70);
+    assert!(tropical_report.query_latency_us < 10.0);
+    assert!(tropical_report.attention_recall >= 0.95);
+    assert!(tropical_report.metric_triangle_error < 1e-5);
+    assert!(tropical_report.softmax_invariance_error < 1e-6);
+    assert!(tropical_report.sandwich_bound_verified);
+    assert!(tropical_report.envelope_soundness_verified);
+    assert!(tropical_report.total_memory_footprint_bytes < 30_000);
 }
