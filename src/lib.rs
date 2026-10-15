@@ -6,6 +6,7 @@ pub mod compression;
 pub mod early_exit;
 pub mod engine;
 pub mod engines;
+pub mod flocking_consensus;
 pub mod kb_rkhs;
 pub mod kernels;
 pub mod mesh;
@@ -24,6 +25,10 @@ pub use benchmark::{BenchmarkReport, TokenSpeedCalculator};
 pub use early_exit::{EarlyExitConfig, EarlyExitEvaluator, EarlyExitReport};
 pub use engine::{EngineConfig, GenerationOutput, GenerationParams, KvPrecision, ModelEngine, ModelMemoryProfile, Utf8StreamDecoder};
 pub use engines::{CpuEngine, HybridSinkEngine, QuantizedKvEngine, RawFfiEngine, SafeLlamaEngine, SlidingWindowEngine, SpeculativeEngine};
+pub use flocking_consensus::{
+    DynamicFlockingTopology, FlockingAgentState, FlockingConsensusEvaluator, FlockingConsensusReport,
+    ReynoldsFlockingController, SwarmAgentConfig,
+};
 pub use kb_rkhs::{Complex64, KbRkhsConfig, KbRkhsEvaluator, KbRkhsHeadCache, KbRkhsReport};
 pub use kernels::{
     AlignedTile64, BergmanSimdKernel, E8LatticeMicroKernel, MicroKernelBenchmarkReport,

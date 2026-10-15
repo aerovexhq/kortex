@@ -10,8 +10,8 @@
 #![deny(unsafe_code)]
 
 use kortex::{
-    AvionicsBridgeEvaluator, DistributedMeshEvaluator, KbRkhsEvaluator, MicroKernelEvaluator,
-    ZeroAdaptEvaluator, ZoSpecDecEvaluator,
+    AvionicsBridgeEvaluator, DistributedMeshEvaluator, FlockingConsensusEvaluator, KbRkhsEvaluator,
+    MicroKernelEvaluator, ZeroAdaptEvaluator, ZoSpecDecEvaluator,
 };
 
 #[test]
@@ -22,6 +22,7 @@ fn verify_all_kortex_innovation_subsystems() {
     let specdec_report = ZoSpecDecEvaluator::evaluate();
     let kb_report = KbRkhsEvaluator::evaluate();
     let avionics_report = AvionicsBridgeEvaluator::evaluate();
+    let flocking_report = FlockingConsensusEvaluator::evaluate();
 
     println!("\n=== KORTEX INNOVATION SUBSYSTEMS EMPIRICAL BENCHMARK REPORT ===");
     println!(
@@ -86,6 +87,17 @@ fn verify_all_kortex_innovation_subsystems() {
         avionics_report.watchdog_fallback_verified,
         avionics_report.sonon_frames_streamed
     );
+    println!(
+        "[Flocking]   Swarm: {} UAVs | Drops: {:.0}% | Lambda2: {:.3} | Disagreement: {:.3} -> {:.4} | Latency: {:.2} us | Min Dist: {:.2} m | Mem: {:.2} KiB",
+        flocking_report.num_agents,
+        flocking_report.packet_drop_rate * 100.0,
+        flocking_report.algebraic_connectivity_lambda2,
+        flocking_report.initial_disagreement_norm,
+        flocking_report.final_consensus_residual,
+        flocking_report.consensus_cycle_latency_us,
+        flocking_report.min_inter_uav_distance_m,
+        flocking_report.total_memory_footprint_kib
+    );
 
     // 1. Distributed Mesh gates
     assert!(mesh_report.wire_compression_ratio > 90.0);
@@ -119,4 +131,11 @@ fn verify_all_kortex_innovation_subsystems() {
     assert_eq!(avionics_report.safe_candidates_retained, 2);
     assert!(avionics_report.watchdog_fallback_verified);
     assert_eq!(avionics_report.sonon_frames_streamed, 64);
+
+    // 7. Multi-UAV Flocking Consensus Attention gates
+    assert!(flocking_report.algebraic_connectivity_lambda2 > 0.0);
+    assert!(flocking_report.final_consensus_residual < flocking_report.initial_disagreement_norm * 0.15);
+    assert!(flocking_report.min_inter_uav_distance_m >= 3.0);
+    assert!(flocking_report.consensus_cycle_latency_us < 5000.0);
+    assert!(flocking_report.total_memory_footprint_kib < 50.0);
 }
