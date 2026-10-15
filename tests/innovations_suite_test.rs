@@ -14,8 +14,8 @@ use kortex::{
     DistributedMeshEvaluator, DlPackShmEvaluator, FlockingConsensusEvaluator,
     GraphonAttentionEvaluator, KbRkhsEvaluator, LieGroupPredictorEvaluator,
     MicroKernelEvaluator, MultiModalFusionEvaluator, NeuromorphicSpikeEvaluator,
-    QuantumDensityEvaluator, SymplecticDynamicsEvaluator, TdaSkeletonEvaluator,
-    ZeroAdaptEvaluator, ZoSpecDecEvaluator,
+    PrivacySketchesEvaluator, QuantumDensityEvaluator, SymplecticDynamicsEvaluator,
+    TdaSkeletonEvaluator, ZeroAdaptEvaluator, ZoSpecDecEvaluator,
 };
 
 #[test]
@@ -37,6 +37,7 @@ fn verify_all_kortex_innovation_subsystems() {
     let cs_report = CompressiveSensingEvaluator::default().evaluate();
     let quantum_report = QuantumDensityEvaluator::default().evaluate_performance();
     let graphon_report = GraphonAttentionEvaluator::default().evaluate_performance();
+    let privacy_report = PrivacySketchesEvaluator::default().evaluate_performance();
 
     println!("\n=== KORTEX INNOVATION SUBSYSTEMS EMPIRICAL BENCHMARK REPORT ===");
     println!(
@@ -220,6 +221,16 @@ fn verify_all_kortex_innovation_subsystems() {
         graphon_report.compression_ratio,
         graphon_report.total_memory_footprint_bytes
     );
+    println!(
+        "[Privacy-LDP] MI Reduction: {:.1}% | Logit Sens: {:.4} | Noise Sigma: {:.4} | Sketch Query: {:.2} us | Sketch Energy Rel Err: {:.4} | Count-Min MSE: {:.4} | Mem: {} B",
+        privacy_report.mutual_information_reduction_pct,
+        privacy_report.lipschitz_logit_sensitivity,
+        privacy_report.calibrated_sigma,
+        privacy_report.sketch_query_latency_us,
+        privacy_report.sketch_energy_rel_error,
+        privacy_report.count_min_debiased_mse,
+        privacy_report.total_memory_footprint_bytes
+    );
 
     // 1. Distributed Mesh gates
     assert!(mesh_report.wire_compression_ratio > 90.0);
@@ -349,4 +360,12 @@ fn verify_all_kortex_innovation_subsystems() {
     assert!(graphon_report.resampling_latency_us < 50.0);
     assert!(graphon_report.compression_ratio >= 4.0);
     assert!(graphon_report.total_memory_footprint_bytes < 10_000);
+
+    // 18. Differential Privacy Sketches & Functional Sensitivity Encoders gates
+    assert!(privacy_report.key_norm_bound_verified);
+    assert!(privacy_report.mutual_information_reduction_pct >= 85.0);
+    assert!(privacy_report.sketch_query_latency_us < 15.0);
+    assert!(privacy_report.sketch_energy_rel_error < 0.60);
+    assert!(privacy_report.count_min_debiased_mse < 50.0);
+    assert!(privacy_report.total_memory_footprint_bytes < 100_000);
 }

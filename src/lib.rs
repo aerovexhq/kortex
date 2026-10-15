@@ -18,6 +18,7 @@ pub mod mesh;
 pub mod model_cache;
 pub mod multimodal_fusion;
 pub mod neuromorphic_spike;
+pub mod privacy_sketches;
 pub mod quantum_density;
 pub mod sampling;
 pub mod symplectic_dynamics;
@@ -81,6 +82,11 @@ pub use neuromorphic_spike::{
     ActivePatchToken, DvsEvent, EventCameraConfig, EventSurfaceRaster, NeuromorphicAttentionBuffer,
     NeuromorphicSpikeEvaluator, NeuromorphicSpikeProjector, NeuromorphicSpikeReport,
     PatchEnergyTracker,
+};
+pub use privacy_sketches::{
+    DifferentiallyPrivateKeyCache, DpCountMinSketch, DpKeyConfig, DpNoiseMechanism,
+    LipschitzSensitivityEstimator, PrivacySketchesEvaluator, PrivacySketchesReport,
+    RandomizedLinearSketch, DP_EPSILON,
 };
 pub use quantum_density::{
     FactorizedDensityMatrix, PovmAttentionKernel, ProjectiveState, QuantumDensityConfig,
