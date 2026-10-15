@@ -13,7 +13,7 @@ use kortex::{
     ActivePerceptionEvaluator, AvionicsBridgeEvaluator, DistributedMeshEvaluator,
     DlPackShmEvaluator, FlockingConsensusEvaluator, KbRkhsEvaluator, LieGroupPredictorEvaluator,
     MicroKernelEvaluator, MultiModalFusionEvaluator, NeuromorphicSpikeEvaluator,
-    SymplecticDynamicsEvaluator, ZeroAdaptEvaluator, ZoSpecDecEvaluator,
+    SymplecticDynamicsEvaluator, TdaSkeletonEvaluator, ZeroAdaptEvaluator, ZoSpecDecEvaluator,
 };
 
 #[test]
@@ -31,6 +31,7 @@ fn verify_all_kortex_innovation_subsystems() {
     let lie_report = LieGroupPredictorEvaluator::evaluate();
     let perception_report = ActivePerceptionEvaluator::evaluate();
     let symplectic_report = SymplecticDynamicsEvaluator::evaluate();
+    let tda_report = TdaSkeletonEvaluator::evaluate();
 
     println!("\n=== KORTEX INNOVATION SUBSYSTEMS EMPIRICAL BENCHMARK REPORT ===");
     println!(
@@ -170,6 +171,17 @@ fn verify_all_kortex_innovation_subsystems() {
         symplectic_report.time_reversibility_rel_err,
         symplectic_report.total_memory_footprint_bytes
     );
+    println!(
+        "[TDA-Skeleton] Latency: {:.2} us | Betti Pres: {:.1}% | Token Red: {:.1}% | Cos Sim: {:.4} | Frob Err: {:.4} | H0: {:.3} | H1: {:.3} | Mem: {} B",
+        tda_report.filtration_latency_us,
+        tda_report.betti_preservation_pct,
+        tda_report.token_reduction_pct,
+        tda_report.reconstruction_cosine_sim,
+        tda_report.relative_frobenius_err,
+        tda_report.persistent_entropy_h0,
+        tda_report.persistent_entropy_h1,
+        tda_report.total_memory_footprint_bytes
+    );
 
     // 1. Distributed Mesh gates
     assert!(mesh_report.wire_compression_ratio > 90.0);
@@ -257,4 +269,14 @@ fn verify_all_kortex_innovation_subsystems() {
     assert!(symplectic_report.shadow_energy_drift_rel < 1e-3);
     assert!(symplectic_report.time_reversibility_rel_err < 1e-4);
     assert!(symplectic_report.total_memory_footprint_bytes < 32_000);
+
+    // 14. Topological Data Analysis & Persistent Homology Context Skeleton gates
+    assert!(tda_report.filtration_latency_us < 500.0);
+    assert!(tda_report.betti_preservation_pct >= 98.0);
+    assert!(tda_report.token_reduction_pct >= 65.0);
+    assert!(tda_report.reconstruction_cosine_sim > 0.90);
+    assert!(tda_report.relative_frobenius_err < 0.35);
+    assert!(tda_report.persistent_entropy_h0 > 0.0);
+    assert!(tda_report.persistent_entropy_h1 >= 0.0);
+    assert!(tda_report.total_memory_footprint_bytes < 35_000);
 }

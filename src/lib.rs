@@ -18,6 +18,7 @@ pub mod multimodal_fusion;
 pub mod neuromorphic_spike;
 pub mod sampling;
 pub mod symplectic_dynamics;
+pub mod tda_skeleton;
 pub mod zero_adapt;
 pub mod zo_specdec;
 
@@ -72,6 +73,11 @@ pub use symplectic_dynamics::{
     PhaseSpaceState, SeparableHamiltonian, ShadowHamiltonianTracker, StormerVerletIntegrator,
     SymplecticDynamicsEvaluator, SymplecticDynamicsReport, Yoshida4thIntegrator,
     DEFAULT_PHASE_DIM,
+};
+pub use tda_skeleton::{
+    MapperAttentionGraph, MapperNode, MetricType, PersistenceDiagram, PersistencePair, Simplex1,
+    SimplicialSkeletonPruner, TdaSkeletonEvaluator, TdaSkeletonReport, TopologicalKeyManifold,
+    VietorisRipsFiltration,
 };
 pub use zero_adapt::{
     DeterministicGaussianRng, KestrelFlightReward, ZeroAdaptAdapter, ZeroAdaptConfig,
