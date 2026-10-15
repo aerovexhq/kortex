@@ -23,6 +23,7 @@ pub mod neuromorphic_spike;
 pub mod privacy_sketches;
 pub mod quantum_density;
 pub mod rmt_noise_deflation;
+pub mod renormalization_group;
 pub mod sampling;
 pub mod symplectic_dynamics;
 pub mod tda_skeleton;
@@ -108,6 +109,11 @@ pub use quantum_density::{
 pub use rmt_noise_deflation::{
     MarchenkoPasturAnalytics, RmtConfig, RmtCovarianceCleaner, RmtEvaluator,
     RmtProjectedKeyCache, RmtReport, RMT_EPSILON,
+};
+pub use renormalization_group::{
+    DyadicOctave, EffectiveCouplings, KadanoffBlockEngine, RenormalizationKeyLattice, RgError,
+    RgEvaluator, RgReport, WilsonianDecimator, LOCAL_WINDOW_SIZE, MAX_DYADIC_OCTAVES,
+    SINK_TOKEN_COUNT,
 };
 pub use symplectic_dynamics::{
     PhaseSpaceState, SeparableHamiltonian, ShadowHamiltonianTracker, StormerVerletIntegrator,

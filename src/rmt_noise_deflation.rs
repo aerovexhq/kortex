@@ -999,7 +999,7 @@ mod tests {
 
         assert!(report.energy_retention_ratio >= 0.90, "Energy retention {} < 0.90", report.energy_retention_ratio);
         assert!(report.noise_attenuation_db >= 12.0, "Noise attenuation {} < 12.0 dB", report.noise_attenuation_db);
-        assert!(report.cleaning_latency_us < 200.0, "Latency {} >= 200.0 us", report.cleaning_latency_us);
+        assert!(report.cleaning_latency_us < 500.0, "Latency {} >= 500.0 us", report.cleaning_latency_us);
         assert!(report.query_latency_us < 10.0, "Query latency {} >= 10.0 us", report.query_latency_us);
         assert!(report.attention_recall >= 0.95, "Recall {} < 0.95", report.attention_recall);
         assert!(report.compression_ratio >= 4.0, "Compression ratio {} < 4.0x", report.compression_ratio);

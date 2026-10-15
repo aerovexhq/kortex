@@ -15,8 +15,8 @@ use kortex::{
     GraphonAttentionEvaluator, HyperbolicEvaluator, KahlerEvaluator, KbRkhsEvaluator,
     LieGroupPredictorEvaluator, MicroKernelEvaluator, MultiModalFusionEvaluator,
     NeuromorphicSpikeEvaluator, PrivacySketchesEvaluator, QuantumDensityEvaluator,
-    RmtEvaluator, SymplecticDynamicsEvaluator, TdaSkeletonEvaluator, TropicalEvaluator,
-    ZeroAdaptEvaluator, ZoSpecDecEvaluator,
+    RgEvaluator, RmtEvaluator, SymplecticDynamicsEvaluator, TdaSkeletonEvaluator,
+    TropicalEvaluator, ZeroAdaptEvaluator, ZoSpecDecEvaluator,
 };
 
 #[test]
@@ -43,6 +43,7 @@ fn verify_all_kortex_innovation_subsystems() {
     let tropical_report = TropicalEvaluator::default().evaluate_performance();
     let rmt_report = RmtEvaluator::default().evaluate_performance();
     let kahler_report = KahlerEvaluator::run_full_evaluation();
+    let rg_report = RgEvaluator::run_full_evaluation();
 
     println!("\n=== KORTEX INNOVATION SUBSYSTEMS EMPIRICAL BENCHMARK REPORT ===");
     println!(
@@ -281,6 +282,16 @@ fn verify_all_kortex_innovation_subsystems() {
         kahler_report.query_latency_us,
         kahler_report.memory_footprint_bytes
     );
+    println!(
+        "[RG-Decimation] Ratio: {:.1}x | Sinks: {:.1}% | Beta Flow: {} | RSMI Bound: {:.4} | Recall: {:.1}% | Query: {:.2} us | Mem: {} B",
+        rg_report.compression_ratio,
+        rg_report.sink_preservation_pct,
+        rg_report.beta_flow_verified,
+        rg_report.rsmi_bound_max,
+        rg_report.attention_recall * 100.0,
+        rg_report.query_latency_us,
+        rg_report.total_memory_footprint_bytes
+    );
 
     // 1. Distributed Mesh gates
     assert!(mesh_report.wire_compression_ratio > 90.0);
@@ -460,4 +471,13 @@ fn verify_all_kortex_innovation_subsystems() {
     assert!(kahler_report.compaction_ratio >= 2.0);
     assert!(kahler_report.query_latency_us < 15.0);
     assert!(kahler_report.memory_footprint_bytes < 50_000);
+
+    // 23. Renormalization Group (RG) Momentum Decimation & Wilsonian Flow gates
+    assert!(rg_report.beta_flow_verified);
+    assert_eq!(rg_report.sink_preservation_pct, 100.0);
+    assert!(rg_report.compression_ratio >= 2.5);
+    assert!(rg_report.query_latency_us < 15.0);
+    assert!(rg_report.attention_recall >= 0.95);
+    assert!(rg_report.rsmi_bound_max > 0.0);
+    assert!(rg_report.total_memory_footprint_bytes < 60_000);
 }
