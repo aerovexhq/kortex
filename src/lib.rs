@@ -55,8 +55,10 @@ pub use dlpack_shm::{
     DlTensorDescriptor, PosixShmRing, ShmError, ShmSlot, MAX_TENSOR_DIMS,
 };
 pub use dust_trainer::{
-    ActivationType, DustLayer, DustMultiLayerNetwork, DustTrainer, DustTrainerConfig,
-    DustTrainingEvaluator, DustTrainingReport,
+    ActivationType, CosineWarmupScheduler, DustCausalAttention, DustLayer, DustMultiLayerNetwork,
+    DustPretrainer, DustPretrainingReport, DustRmsNorm, DustTrainer, DustTrainerConfig,
+    DustTrainingEvaluator, DustTrainingReport, DustTransformerBlock, DustTransformerConfig,
+    DustTransformerModel, TransformerPerturbTarget,
 };
 pub use early_exit::{EarlyExitConfig, EarlyExitEvaluator, EarlyExitReport};
 pub use engine::{EngineConfig, GenerationOutput, GenerationParams, KvPrecision, ModelEngine, ModelMemoryProfile, Utf8StreamDecoder};

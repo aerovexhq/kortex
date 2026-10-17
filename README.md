@@ -111,6 +111,15 @@ cargo run --release --bin chat -- -m path/to/model.gguf
 cargo run --release --bin chat -- -m path/to/model.gguf --temp 0.7 --top-p 0.9 --max-tokens 512
 ```
 
+### Running Full-Cycle Dust Non-Backprop Pretraining
+```bash
+# Pretrain a Transformer model from scratch using forward-only Dust virtual populations
+cargo run --release --bin pretrain -- --layers 2 --d-model 16 --heads 4 --epochs 50 --draws 16
+
+# Pretrain and export a serialized model checkpoint
+cargo run --release --bin pretrain -- --epochs 60 --save-checkpoint /tmp/kortex_dust_ckpt.json
+```
+
 ### Running the Master Benchmark Suite
 ```bash
 # Run the 17-method compression suite across all downloaded models
@@ -129,6 +138,8 @@ kortex/
 ├── Cargo.toml                  # Package manifest & Vulkan dependencies
 ├── src/
 │   ├── lib.rs                  # Public crate exports
+│   ├── dust_trainer.rs         # Full-cycle Dust Transformer & MLP pretraining engine
+│   ├── zero_adapt.rs           # Online zeroth-order LoRA continual adaptation
 │   ├── engine.rs               # ModelEngine trait & memory profiling
 │   ├── benchmark.rs            # Sub-50ns latency & throughput profiler
 │   ├── model_cache.rs          # SHA-256 header hashing & cache lookup (~/.kortex/)
@@ -144,6 +155,7 @@ kortex/
 │   │   ├── standard/           # Zero-Copy, SnapKV, ToMe, Residual Codec
 │   │   └── innovative/         # Ada-SVD, KnotKV, WaveletKV, ResEntangle, OPDM-RoPE
 │   └── bin/                    # Standalone CLI tools & REPL
+│       ├── pretrain.rs         # Dust non-backprop Transformer pretraining CLI
 │       ├── chat.rs             # Interactive Ollama-style terminal REPL
 │       ├── master_compression_suite.rs # 17-method master evaluator
 │       └── autotune.rs         # Automated runner tuning utility

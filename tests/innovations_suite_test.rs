@@ -11,12 +11,12 @@
 
 use kortex::{
     ActivePerceptionEvaluator, AvionicsBridgeEvaluator, CompressiveSensingEvaluator,
-    DistributedMeshEvaluator, DlPackShmEvaluator, DustTrainingEvaluator, FlockingConsensusEvaluator,
-    GraphonAttentionEvaluator, HyperbolicEvaluator, KahlerEvaluator, KbRkhsEvaluator,
-    LieGroupPredictorEvaluator, MicroKernelEvaluator, MultiModalFusionEvaluator,
-    NeuromorphicSpikeEvaluator, PrivacySketchesEvaluator, QuantumDensityEvaluator,
-    RgEvaluator, RmtEvaluator, SymplecticDynamicsEvaluator, TdaSkeletonEvaluator,
-    TropicalEvaluator, ZeroAdaptEvaluator, ZoSpecDecEvaluator,
+    DistributedMeshEvaluator, DlPackShmEvaluator, DustPretrainer, DustTrainingEvaluator,
+    FlockingConsensusEvaluator, GraphonAttentionEvaluator, HyperbolicEvaluator, KahlerEvaluator,
+    KbRkhsEvaluator, LieGroupPredictorEvaluator, MicroKernelEvaluator, MultiModalFusionEvaluator,
+    NeuromorphicSpikeEvaluator, PrivacySketchesEvaluator, QuantumDensityEvaluator, RgEvaluator,
+    RmtEvaluator, SymplecticDynamicsEvaluator, TdaSkeletonEvaluator, TropicalEvaluator,
+    ZeroAdaptEvaluator, ZoSpecDecEvaluator,
 };
 
 #[test]
@@ -45,6 +45,7 @@ fn verify_all_kortex_innovation_subsystems() {
     let kahler_report = KahlerEvaluator::run_full_evaluation();
     let rg_report = RgEvaluator::run_full_evaluation();
     let dust_train_report = DustTrainingEvaluator::default().evaluate();
+    let dust_pretrain_report = DustPretrainer::evaluate_transformer_pretraining();
 
     println!("\n=== KORTEX INNOVATION SUBSYSTEMS EMPIRICAL BENCHMARK REPORT ===");
     println!(
@@ -304,6 +305,21 @@ fn verify_all_kortex_innovation_subsystems() {
         dust_train_report.step_latency_us,
         dust_train_report.memory_footprint_kib
     );
+    println!(
+        "[Dust-Pretrain] Layers: {} | Heads: {} | Params: {} | CE Loss: {:.4} -> {:.4} ({:.1}% red) | PPL: {:.2} -> {:.2} | Top-1 Acc: {:.1}% | Anti Grad Cos: {:.4} | Latency: {:.2} us | Mem: {:.2} KiB",
+        dust_pretrain_report.num_layers,
+        dust_pretrain_report.num_heads,
+        dust_pretrain_report.total_parameters,
+        dust_pretrain_report.initial_cross_entropy_loss,
+        dust_pretrain_report.final_cross_entropy_loss,
+        dust_pretrain_report.loss_reduction_pct,
+        dust_pretrain_report.initial_perplexity,
+        dust_pretrain_report.final_perplexity,
+        dust_pretrain_report.final_top1_accuracy_pct,
+        dust_pretrain_report.antithetic_gradient_cosine_similarity,
+        dust_pretrain_report.step_latency_us,
+        dust_pretrain_report.memory_footprint_kib
+    );
 
     // 1. Distributed Mesh gates
     assert!(mesh_report.wire_compression_ratio > 90.0);
@@ -500,4 +516,13 @@ fn verify_all_kortex_innovation_subsystems() {
     assert!(dust_train_report.mean_gradient_cosine_similarity > 0.40);
     assert!(dust_train_report.step_latency_us < 350.0);
     assert!(dust_train_report.memory_footprint_kib < 120.0);
+
+    // 25. Full-Scale Dust Transformer Pretraining & Antithetic Virtual Population gates
+    assert!(dust_pretrain_report.loss_reduction_pct > 50.0);
+    assert!(dust_pretrain_report.final_cross_entropy_loss < dust_pretrain_report.initial_cross_entropy_loss);
+    assert!(dust_pretrain_report.final_perplexity < dust_pretrain_report.initial_perplexity);
+    assert!(dust_pretrain_report.final_top1_accuracy_pct >= 85.0);
+    assert!(dust_pretrain_report.antithetic_gradient_cosine_similarity > 0.80);
+    assert!(dust_pretrain_report.causal_credit_advantage_verified);
+    assert!(dust_pretrain_report.memory_footprint_kib < 120.0);
 }

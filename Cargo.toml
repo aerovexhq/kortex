@@ -2,7 +2,7 @@
 name = "kortex"
 version = "0.1.0"
 edition = "2021"
-description = "Hardware-accelerated edge LLM inference kernel, bounded O(1) attention streaming, and mathematical KV-cache compression in Rust."
+description = "Multi-purpose deep learning engine for non-backpropagation Dust pretraining, hardware-accelerated edge LLM inference, bounded O(1) attention streaming, and KV-cache compression in Rust."
 license = "MIT"
 repository = "https://github.com/aerovexhq/kortex"
 
